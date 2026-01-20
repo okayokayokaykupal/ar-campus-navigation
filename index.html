@@ -7,7 +7,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.3.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.3/aframe/build/aframe-ar.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/zxing/0.18.6/zxing.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -79,68 +79,32 @@
             position: relative;
         }
 
-        #qrVideo {
+        #reader {
             width: 100%;
             height: 100%;
-            object-fit: cover;
         }
 
         .qr-overlay {
             position: absolute;
-            top: 0;
+            bottom: 40px;
             left: 0;
             width: 100%;
-            height: 100%;
             display: flex;
-            flex-direction: column;
             justify-content: center;
-            align-items: center;
             pointer-events: none;
-        }
-
-        .qr-frame {
-            width: 250px;
-            height: 250px;
-            border: 3px solid #00ff00;
-            border-radius: 20px;
-            box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
-            position: relative;
-        }
-
-        .qr-frame::before,
-        .qr-frame::after {
-            content: '';
-            position: absolute;
-            width: 30px;
-            height: 30px;
-            border: 4px solid #00ff00;
-        }
-
-        .qr-frame::before {
-            top: -4px;
-            left: -4px;
-            border-right: none;
-            border-bottom: none;
-        }
-
-        .qr-frame::after {
-            bottom: -4px;
-            right: -4px;
-            border-left: none;
-            border-top: none;
+            z-index: 10;
         }
 
         .qr-text {
             color: white;
             font-size: 1.2em;
-            margin-top: 30px;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.8);
             padding: 15px 30px;
             border-radius: 10px;
         }
 
         .qr-detected {
-            background: rgba(0,255,0,0.7) !important;
+            background: rgba(0,255,0,0.8) !important;
             animation: pulse 0.5s;
         }
 
@@ -339,24 +303,6 @@
             0%, 100% { transform: translate(-50%, -50%) translateY(0); }
             50% { transform: translate(-50%, -50%) translateY(-20px); }
         }
-
-        .scanning-line {
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 250px;
-            height: 2px;
-            background: #00ff00;
-            box-shadow: 0 0 10px #00ff00;
-            animation: scan 2s linear infinite;
-            z-index: 10;
-        }
-
-        @keyframes scan {
-            0% { top: 25%; }
-            100% { top: 55%; }
-        }
     </style>
 </head>
 <body>
@@ -369,11 +315,8 @@
 
     <!-- QR Scanner Screen -->
     <div id="qrScreen" class="screen">
-        <video id="qrVideo" autoplay playsinline></video>
+        <div id="reader"></div>
         <div class="qr-overlay">
-            <div class="qr-frame">
-                <div class="scanning-line"></div>
-            </div>
             <div class="qr-text" id="qrStatus">Scan floor QR code to begin</div>
         </div>
     </div>
@@ -490,9 +433,9 @@
             ]
         };
 
-        // ZXing QR Code Reader
-        let codeReader;
-        let selectedDeviceId;
+        // Html5Qrcode scanner
+        let html5QrCode = null;
+        let isScanning = false;
 
         // Start application
         function startApp() {
@@ -500,42 +443,60 @@
             startQRScanner();
         }
 
-        // Initialize ZXing QR code scanner
+        // Initialize QR code scanner with Html5Qrcode
         async function startQRScanner() {
+            if (isScanning) return;
+            
             try {
-                codeReader = new ZXing.BrowserQRCodeReader();
+                console.log('📷 Initializing QR Scanner...');
                 
-                // Get video devices
-                const videoInputDevices = await codeReader.listVideoInputDevices();
+                html5QrCode = new Html5Qrcode("reader");
                 
-                // Try to find back camera (environment-facing)
-                selectedDeviceId = videoInputDevices.find(device => 
-                    device.label.toLowerCase().includes('back') || 
-                    device.label.toLowerCase().includes('rear') ||
-                    device.label.toLowerCase().includes('environment')
-                )?.deviceId || videoInputDevices[0]?.deviceId;
-
-                if (!selectedDeviceId) {
-                    throw new Error('No camera found');
-                }
-
-                // Start decoding from video device
-                codeReader.decodeFromVideoDevice(
-                    selectedDeviceId, 
-                    'qrVideo', 
-                    (result, err) => {
-                        if (result) {
-                            handleQRCode(result.text);
-                        }
-                        if (err && !(err instanceof ZXing.NotFoundException)) {
-                            console.error('QR Scanner error:', err);
-                        }
+                const config = {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1.0,
+                    formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ]
+                };
+                
+                // Start scanning - this will ask for camera permission
+                await html5QrCode.start(
+                    { facingMode: "environment" },
+                    config,
+                    (decodedText, decodedResult) => {
+                        console.log('✅ QR Code detected:', decodedText);
+                        handleQRCode(decodedText);
+                    },
+                    (errorMessage) => {
+                        // Ignore "not found" errors - they're normal
                     }
                 );
-
+                
+                isScanning = true;
+                console.log('✅ Scanner started successfully!');
+                
             } catch (err) {
-                console.error('Camera initialization error:', err);
-                alert('Camera permission denied or not available. Please enable camera access and try again.');
+                console.error('❌ Scanner error:', err);
+                
+                let errorMsg = '';
+                const errStr = err.toString();
+                
+                if (errStr.includes('NotAllowedError') || errStr.includes('Permission denied')) {
+                    errorMsg = '🚫 Camera Permission Denied\n\n' +
+                               'You need to allow camera access to scan QR codes.\n\n' +
+                               'To fix:\n' +
+                               '1. Click the camera icon in your browser address bar\n' +
+                               '2. Select "Allow"\n' +
+                               '3. Reload the page';
+                } else if (errStr.includes('NotFoundError')) {
+                    errorMsg = '📷 No Camera Found\n\nPlease ensure your device has a working camera.';
+                } else if (errStr.includes('NotReadableError')) {
+                    errorMsg = '⚠️ Camera In Use\n\nYour camera is being used by another app. Please close it and try again.';
+                } else {
+                    errorMsg = '❌ Camera Error\n\n' + errStr;
+                }
+                
+                alert(errorMsg);
                 switchScreen('homeScreen');
             }
         }
@@ -546,16 +507,16 @@
             if (floorMatch) {
                 const floor = floorMatch[1];
                 if (floor >= '1' && floor <= '5') {
-                    // Update UI
                     document.getElementById('qrStatus').textContent = `✓ Floor ${floor} Detected!`;
                     document.getElementById('qrStatus').classList.add('qr-detected');
                     
-                    // Stop camera
-                    if (codeReader) {
-                        codeReader.reset();
+                    // Stop scanner
+                    if (html5QrCode && isScanning) {
+                        html5QrCode.stop().then(() => {
+                            isScanning = false;
+                            setTimeout(() => detectFloor(floor), 1000);
+                        });
                     }
-                    
-                    setTimeout(() => detectFloor(floor), 1000);
                 }
             }
         }
@@ -597,7 +558,6 @@
             document.getElementById('destRoom').textContent = room.name;
             switchScreen('arScreen');
             
-            // Start distance countdown
             updateDistance();
         }
 
@@ -612,7 +572,6 @@
                 state.distance = Math.max(0, state.distance - 1);
                 setTimeout(updateDistance, 800);
             } else {
-                // Reached destination
                 document.getElementById('arrowIndicator').style.display = 'none';
             }
         }
