@@ -336,21 +336,9 @@
 
     <!-- AR Navigation Screen -->
     <div id="arScreen" class="screen">
-        <div class="ar-controls">
-            <div>Navigating to: <strong><span id="destRoom">-</span></strong></div>
-            <div class="ar-distance" id="distanceDisplay">--m</div>
-        </div>
-        <div class="arrow-indicator" id="arrowIndicator">↑</div>
-        <button class="stop-btn" onclick="stopNavigation()">🎯 I've Arrived</button>
-        <div id="roomInfo" class="room-info">
-            <h3 id="roomTitle">Room 101</h3>
-            <p id="roomDesc">Computer Laboratory</p>
-            <button class="close-btn" onclick="closeRoomInfo()">Done</button>
-        </div>
-        
-        <!-- 3D AR Scene -->
-        <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
-            <a-entity id="arCamera" camera></a-entity>
+        <!-- 3D AR Scene - MUST be first to get camera -->
+        <a-scene id="arScene" embedded arjs="sourceType: webcam; debugUIEnabled: false; videoTexture: true;" vr-mode-ui="enabled: false" renderer="antialias: true; alpha: true;">
+            <a-camera gps-camera rotation-reader></a-camera>
             
             <!-- Animated navigation sphere -->
             <a-sphere id="navMarker1" position="0 1.5 -2" radius="0.15" color="#00ff88" 
@@ -383,6 +371,18 @@
                     animation="property: opacity; from: 0.5; to: 1; dir: alternate; dur: 1000; loop: true">
             </a-text>
         </a-scene>
+        
+        <div class="ar-controls">
+            <div>Navigating to: <strong><span id="destRoom">-</span></strong></div>
+            <div class="ar-distance" id="distanceDisplay">--m</div>
+        </div>
+        <div class="arrow-indicator" id="arrowIndicator">↑</div>
+        <button class="stop-btn" onclick="stopNavigation()">🎯 I've Arrived</button>
+        <div id="roomInfo" class="room-info">
+            <h3 id="roomTitle">Room 101</h3>
+            <p id="roomDesc">Computer Laboratory</p>
+            <button class="close-btn" onclick="closeRoomInfo()">Done</button>
+        </div>
     </div>
 
     <script>
@@ -543,7 +543,7 @@
         }
 
         // Start AR navigation
-        function startNavigation() {
+        async function startNavigation() {
             const roomId = document.getElementById('roomSelect').value;
             if (!roomId) {
                 alert('Please select a room first');
@@ -557,6 +557,17 @@
             
             document.getElementById('destRoom').textContent = room.name;
             switchScreen('arScreen');
+            
+            // Request camera permission for AR
+            try {
+                await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                console.log('✅ AR Camera permission granted');
+            } catch (err) {
+                console.error('AR camera error:', err);
+                alert('Camera access needed for AR navigation');
+                switchScreen('destScreen');
+                return;
+            }
             
             updateDistance();
         }
