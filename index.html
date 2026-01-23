@@ -9,87 +9,53 @@
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
-
 <style>
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    overflow: hidden;
+html, body {
+  margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
 }
 
-/* UI PANEL */
+a-scene { width: 100%; height: 100%; }
+
 #ui {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0,0,0,0.85);
-    padding: 15px;
-    border-radius: 12px;
-    color: white;
-    width: 90%;
-    max-width: 400px;
-    z-index: 10;
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.85); padding: 15px; border-radius: 12px;
+  color: white; width: 90%; max-width: 400px; z-index: 10;
 }
 
-select, button {
-    width: 100%;
-    padding: 10px;
-    margin-top: 8px;
-    border-radius: 8px;
-    border: none;
-    font-size: 16px;
-}
-
-button {
-    background: #00ff88;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-#status {
-    text-align: center;
-    margin-bottom: 8px;
-    font-size: 14px;
-}
+select, button { width: 100%; padding: 10px; margin-top: 8px; border-radius: 8px; border: none; font-size: 16px; }
+button { background: #00ff88; font-weight: bold; cursor: pointer; }
+#status { text-align: center; margin-bottom: 8px; font-size: 14px; }
 </style>
 </head>
 
 <body>
 
-<!-- AR SCENE -->
-<a-scene embedded arjs>
+<a-scene embedded arjs="trackingMethod: best; sourceType: webcam; facingMode: environment;" 
+         renderer="alpha: true; physicallyCorrectLights: true" vr-mode-ui="enabled: false">
 
+  <!-- Marker for floor detection -->
+  <a-marker preset="custom" type="barcode" value="1" id="floorMarker">
+    <a-text id="floorText"
+            value="You're on Floor 1\nSelect your destination"
+            position="0 0 -1.2"
+            align="center"
+            color="#00ff88"
+            width="4">
+    </a-text>
+  </a-marker>
 
-<a-marker preset = "custom" type = "barcode" value = "1">
-  <a-text
-    value="You're on Floor 1\nSelect your destination"
-    position="0 0 -1.2"
-    align="center"
-    color="#00ff88"
-    width="4">
-  </a-text>
-<a-marker>
-  <a-entity
-  camera
-  look-controls
-  fov="75"
-  near="0.1"
-  far="1000"
-  position="0 0 0">
-  </a-entity>
+  <!-- Camera -->
+  <a-entity camera look-controls fov="75" near="0.1" far="1000"></a-entity>
+
 </a-scene>
-
 
 <!-- UI -->
 <div id="ui">
-    <div id="status">Waiting for destination…</div>
-
-    <select id="roomSelect">
-        <option value="">Select destination</option>
-    </select>
-
-    <button onclick="startNavigation()">Start Navigation</button>
+  <div id="status">Waiting for QR scan…</div>
+  <select id="roomSelect">
+    <option value="">Select destination</option>
+  </select>
+  <button onclick="startNavigation()">Start Navigation</button>
 </div>
 
 <script>
@@ -97,76 +63,68 @@ button {
 // DATA
 // =======================
 const rooms = {
-    1: ["101","102","103","104","105"],
-    2: ["201","202","203","204","205"],
-    3: ["301","302","303","304","305"],
-    4: ["401","402","403","404","405"],
-    5: ["501","502","503","504","505"]
+  1: ["101","102","103","104","105"],
+  2: ["201","202","203","204","205"],
+  3: ["301","302","303","304","305"]
 };
 
-const state = {
-    currentFloor: null,
-    destination: null
-};
+const state = { currentFloor: null, destination: null };
 
 // =======================
-// INIT FROM QR (URL)
+// Populate rooms dropdown
 // =======================
-window.addEventListener("load", () => {
-    const params = new URLSearchParams(window.location.search);
-    const floor = params.get("floor");
+const select = document.getElementById("roomSelect");
+for (const floor in rooms) {
+  const group = document.createElement("optgroup");
+  group.label = `Floor ${floor}`;
+  rooms[floor].forEach(room => {
+    const option = document.createElement("option");
+    option.value = `${floor}-${room}`;
+    option.textContent = `Room ${room}`;
+    group.appendChild(option);
+  });
+  select.appendChild(group);
+}
 
-    if (floor && rooms[floor]) {
-        state.currentFloor = floor;
-        showStartText(floor);
-        populateRooms();
-    } else {
-        document.getElementById("status").textContent =
-            "❌ Invalid or missing floor QR";
-    }
+// =======================
+// Marker visibility events
+// =======================
+const marker = document.querySelector('#floorMarker');
+
+marker.addEventListener('markerFound', () => {
+  console.log('Marker found!');
+  const floorText = document.querySelector('#floorText');
+  floorText.setAttribute('visible', true);
+  document.getElementById('status').textContent = 'QR detected! Select your destination';
+  state.currentFloor = 1; // or dynamically set if multiple markers
+});
+
+marker.addEventListener('markerLost', () => {
+  console.log('Marker lost!');
+  const floorText = document.querySelector('#floorText');
+  floorText.setAttribute('visible', false);
+  document.getElementById('status').textContent = 'QR not detected…';
 });
 
 // =======================
-// UI FUNCTIONS
+// Navigation button
 // =======================
-function populateRooms() {
-    const select = document.getElementById("roomSelect");
-
-    for (const floor in rooms) {
-        const group = document.createElement("optgroup");
-        group.label = `Floor ${floor}`;
-
-        rooms[floor].forEach(room => {
-            const option = document.createElement("option");
-            option.value = `${floor}-${room}`;
-            option.textContent = `Room ${room}`;
-            group.appendChild(option);
-        });
-
-        select.appendChild(group);
-    }
-}
-
-function showStartText(floor) {
-    const text = document.getElementById("startText");
-    text.setAttribute(
-        "value",
-        `📍 You are on Floor ${floor}\nStart here`
-    );
-    text.setAttribute("visible", true);
-}
-
 function startNavigation() {
-    const value = document.getElementById("roomSelect").value;
-    if (!value) return alert("Select a destination");
+  const value = select.value;
+  if (!value) return alert("Select a destination");
+  
+  const [floor, room] = value.split("-");
+  state.destination = { floor, room };
+  document.getElementById('status').textContent = `Navigating to Room ${room} (Floor ${floor})`;
 
-    const [destFloor, room] = value.split("-");
-    state.destination = { floor: destFloor, room };
-
-    document.getElementById("status").textContent =
-        `Navigating to Room ${room} (Floor ${destFloor})`;
-
-    document.getElementById("navArrow").setAttribute("visible", true);
+  // Example: leave arrow behind
+  const arrow = document.createElement('a-cone');
+  arrow.setAttribute('position', '0 0 -2'); // relative to camera or world
+  arrow.setAttribute('rotation', '0 0 0');
+  arrow.setAttribute('color', '#ffff00');
+  arrow.setAttribute('radius-bottom', '0.2');
+  arrow.setAttribute('height', '0.5');
+  document.querySelector('a-scene').appendChild(arrow);
 }
 </script>
 
