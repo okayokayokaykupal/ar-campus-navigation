@@ -2,30 +2,27 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport"
-        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
   <title>Hello WebXR!</title>
 
-  <!-- three.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.180.0/three.tsl.js" integrity="sha512-pVsOWriwN/5X/FWYhtqqQLnD+3cm8W1YqGrNrfkKgp+GMykFl7fZ0vorWpckUlZOVIG1tNVnI3D7T8DSea5TQg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ar.js/2.2.2/aframe-ar.min.js" integrity="sha512-Vwmkm1QOtdVNLuwkxaXXyB/aBY0lZvI4NTv+83gs+pU0HuZ2j3inyfgpMpJHYRS0O3PoHEhO6mKomMYBKXRMWw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
+  <!-- three.js r128 (compatible with AR.js) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- AR.js -->
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/three.js/build/ar-threex.js"></script>
 </head>
-<body>
+<body style="margin:0; overflow:hidden;">
 
 <script>
-import * as THREE from 'three';
-
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
-scene.add(camera)
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+scene.add(camera);
+
 const renderer = new THREE.WebGLRenderer({
   antialias: true, 
   alpha: true
 });
-renderer.setSize( window.innerWidth, window.innerHeight );
-renderer.setAnimationLoop( animate );
-document.body.appendChild( renderer.domElement );
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
 
 var ArToolkitSource = new THREEx.ArToolkitSource({
   sourceType: "webcam"
@@ -33,41 +30,51 @@ var ArToolkitSource = new THREEx.ArToolkitSource({
 
 ArToolkitSource.init(function(){
   setTimeout(function(){
-    ArToolkitSource.onResizeElemet();
+    ArToolkitSource.onResizeElement();
     ArToolkitSource.copyElementSizeTo(renderer.domElement);
-  },2000)
+  }, 2000);
 });
 
-var ArToolkitContext = new THREEx. ArToolkitContext({
-    cameraParametersUrl: 'camera_para.dat',
-    detectionMode: 'color_and_matrix'
+var ArToolkitContext = new THREEx.ArToolkitContext({
+  cameraParametersUrl: 'https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/data/data/camera_para.dat',
+  detectionMode: 'mono'
 });
 
 ArToolkitContext.init(function(){
   camera.projectionMatrix.copy(ArToolkitContext.getProjectionMatrix());
 });
 
-var ArMarkerControls = new THREEx.ArMarkerControls(ArToolkitContext, camera{
+var ArMarkerControls = new THREEx.ArMarkerControls(ArToolkitContext, camera, {
   type: 'pattern',
-  patternUrl:'patterns/hallway1.patt',
-  changeMatrixMode:'cameraTransforMatrix'
+  patternUrl: 'https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/data/data/patt.hiro',
+  changeMatrixMode: 'cameraTransformMatrix'
 });
+
 scene.visible = false;
 
-const geometry = new THREE.CubeGeometry( 1, 1, 1 );
-const material = new THREE.MeshNormalMaterial( { transparent: true, opacity: 0.5, side: THREE.Doubleside} );
-const cube = new THREE.Mesh( geometry, material );
+const geometry = new THREE.BoxGeometry(1, 1, 1);
+const material = new THREE.MeshNormalMaterial({ 
+  transparent: true, 
+  opacity: 0.5, 
+  side: THREE.DoubleSide
+});
+const cube = new THREE.Mesh(geometry, material);
 cube.position.y = geometry.parameters.height / 2;
-scene.add( cube );
-
-camera.position.z = 5;
+scene.add(cube);
 
 function animate() {
-
-  requestAnimationFrame ( animate );
-  ArToolkitContext.uodate(ArToolkitSource.domElement);
-  scene.visible = camera.visible;
-  renderer.render( scene, camera );
-
+  requestAnimationFrame(animate);
+  
+  if (ArToolkitSource.ready) {
+    ArToolkitContext.update(ArToolkitSource.domElement);
+    scene.visible = camera.visible;
+  }
+  
+  renderer.render(scene, camera);
 }
+
+animate();
 </script>
+
+</body>
+</html>
