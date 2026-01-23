@@ -2,11 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<meta name="viewport"
       content="width=device-width, height=device-height,
       initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-	<title>AR Campus Navigation</title>
+    <title>AR Campus Navigation</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.3.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.3/aframe/build/aframe-ar.min.js"></script>
@@ -83,17 +82,16 @@
         }
 
         #reader {
-			width: 100%;
-			height: 100%;
-			position: relative;
-			background: black;
-        }
-        
-		#reader video {
             width: 100%;
             height: 100%;
-			object-fit: contain;
         }
+		
+		#reader video {
+		    width: 100%;
+            height: 100%;
+			object-fit: contain;
+		}
+
         .qr-overlay {
             position: absolute;
             bottom: 40px;
@@ -313,15 +311,6 @@
             0%, 100% { transform: translate(-50%, -50%) translateY(0); }
             50% { transform: translate(-50%, -50%) translateY(-20px); }
         }
-		a-scene,
-			a-scene video {
-			position: fixed !important;
-			top: 0;
-			left: 0;
-			width: 100vw !important;
-			height: 100vh !important;
-			object-fit: cover;
-		}
     </style>
 </head>
 <body>
@@ -471,55 +460,25 @@
                 
                 html5QrCode = new Html5Qrcode("reader");
                 
-				const reader = document.getElementById("reader");
-				reader.style.visibility = "hidden";
-
-				setTimeout(async () => {
-				await forceBackCamera();
-				reader.style.visibility = "visible";
-				}, 400);
-
                 const config = {
-				fps: 10,
-				disableFlip: false,
-				videoConstraints: {
-				width: { ideal: 1920 },
-				height: { ideal: 1080 }
-			  }
-							};
-							
-							// Start scanning - this will ask for camera permission
-				await html5QrCode.start(
-				{ facingMode: "environment" },
-				config,
-				(decodedText) => handleQRCode(decodedText),
-				  () => {}
-				);
-
-				// Force back camera after permission
-				setTimeout(forceBackCamera, 400);
-
-				async function forceBackCamera() {
-				  const devices = await Html5Qrcode.getCameras();
-
-				  const backCam = devices.find(d =>
-					d.label.toLowerCase().includes("back") ||
-					d.label.toLowerCase().includes("rear")
-				  );
-
-				  if (!backCam) return;
-
-				  await html5QrCode.stop();
-
-				  await html5QrCode.start(
-					backCam.id,
-					config, // 👈 SAME CONFIG (keeps quality)
-					(decodedText) => handleQRCode(decodedText),
-					() => {}
-				  );
-				}
-
-
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1.0,
+                    formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ]
+                };
+                
+                // Start scanning - this will ask for camera permission
+                await html5QrCode.start(
+                    { facingMode: "environment" },
+                    config,
+                    (decodedText, decodedResult) => {
+                        console.log('✅ QR Code detected:', decodedText);
+                        handleQRCode(decodedText);
+                    },
+                    (errorMessage) => {
+                        // Ignore "not found" errors - they're normal
+                    }
+                );
                 
                 isScanning = true;
                 console.log('✅ Scanner started successfully!');
