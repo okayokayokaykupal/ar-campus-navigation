@@ -63,8 +63,6 @@ button {
   background: #00ff88;
   font-weight: bold;
   cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
 }
 
 button:hover {
@@ -74,7 +72,7 @@ button:hover {
 #status {
   text-align: center;
   margin-bottom: 8px;
-  font-size: 14px;
+  font-size: 30px;
 }
 
 .instruction-text {
@@ -270,14 +268,14 @@ function loadRoute(key) {
     });
     
     // Create 3D arrow or cube indicator
-    const geometry = new THREE.ConeGeometry(0.3, 0.6, 8);
+    const geometry = new THREE.ConeGeometry(0, 0.05, 0);
     const material = new THREE.MeshBasicMaterial({ 
       color: index === 0 ? 0x00ff00 : 0xffff00,
       transparent: true,
       opacity: 0.8
     });
     const cone = new THREE.Mesh(geometry, material);
-    cone.position.set(0, 0.1, 0); // Closer to marker surface
+    cone.position.y = 0.5;
     cone.rotation.x = Math.PI; // Point down
     markerRoot.add(cone);
     
@@ -339,3 +337,4 @@ function clearMarkers() {
 
 </body>
 </html>
+
