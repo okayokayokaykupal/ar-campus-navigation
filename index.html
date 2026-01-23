@@ -1,99 +1,226 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport"
-        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
-  <title>Hello WebXR!</title>
+<meta charset="UTF-8">
+<title>Campus AR Navigator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- three.js -->
-  <script src="https://unpkg.com/three@0.126.0/build/three.js"></script>
+<!-- A-Frame + AR.js -->
+<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* UI PANEL */
+#ui {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.85);
+  padding: 15px;
+  border-radius: 12px;
+  color: white;
+  width: 90%;
+  max-width: 400px;
+  z-index: 10;
+}
+
+select, button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  border-radius: 8px;
+  border: none;
+  font-size: 16px;
+}
+button {
+  background: #00ff88;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#status {
+  text-align: center;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+/* Mobile text scaling */
+@media (max-width: 768px) {
+  a-text { transform: scale(1 1 1); }
+  a-cone { transform: scale(0.8 0.8 0.8); }
+}
+
+/* Desktop scaling */
+@media (min-width: 769px) {
+  a-text { transform: scale(1.5 1.5 1.5); }
+  a-cone { transform: scale(1 1 1); }
+}
+
+</style>
 </head>
 <body>
 
-<!-- Starting an immersive WebXR session requires user interaction.
-    We start this one with a simple button. -->
-<button onclick="activateXR()">Start Hello WebXR</button>
+<!-- AR SCENE -->
+<a-scene
+  embedded
+  arjs="trackingMethod: best; sourceType: webcam; facingMode: environment;"
+  renderer="alpha: true; physicallyCorrectLights: true"
+  vr-mode-ui="enabled: false"
+  device-orientation-permission-ui="enabled: true"
+>
+
+  <!-- Camera -->
+  <a-entity id="camera" camera look-controls near="0.1" far="1000"></a-entity>
+
+  <!-- Floor Marker -->
+  <a-marker type="barcode" value="1" id="floorMarker">
+    <a-text id="floorText"
+            value="You're on Floor 1\nSelect your destination"
+            position="0 0 0"
+            color="#00ff88"
+            scale="1 1 1">
+    </a-text>
+  </a-marker>
+
+</a-scene>
+
+<!-- UI -->
+<div id="ui">
+  <div id="status">Waiting for destination…</div>
+  <select id="roomSelect"></select>
+  <button onclick="startNavigation()">Start Navigation</button>
+</div>
+
 <script>
-async function activateXR() {
-  // Add a canvas element and initialize a WebGL context that is compatible with WebXR.
-  const canvas = document.createElement("canvas");
-  document.body.appendChild(canvas);
-  const gl = canvas.getContext("webgl", {xrCompatible: true});
+// ------------------- DATA -------------------
+const rooms = {
+  1: ["101","102","103","104","105"],
+  2: ["201","202","203","204","205"],
+  3: ["301","302","303","304","305"],
+  4: ["401","402","403","404","405"],
+  5: ["501","502","503","504","505"]
+};
 
-  // To be continued in upcoming steps.
-  const scene = new THREE.Scene();
+const arrowPositions = {
+  "1-101": [{x:0, y:0, z:-2}, {x:0, y:0, z:-4}],
+  "1-102": [{x:0, y:0, z:-2}, {x:0, y:1 , z:0}],
+  "5-501": [{x:0, y:0, z:-1}, {x:0.5, y:0, z:-2.5}, {x:1, y:0, z:-4}],
+};
 
-// The cube will have a different color on each side.
-const materials = [
-  new THREE.MeshBasicMaterial({color: 0xff0000}),
-  new THREE.MeshBasicMaterial({color: 0x0000ff}),
-  new THREE.MeshBasicMaterial({color: 0x00ff00}),
-  new THREE.MeshBasicMaterial({color: 0xff00ff}),
-  new THREE.MeshBasicMaterial({color: 0x00ffff}),
-  new THREE.MeshBasicMaterial({color: 0xffff00})
-];
+const state = { currentFloor: null, destination: null };
 
-// Create the cube and add it to the demo scene.
-const cube = new THREE.Mesh(new THREE.BoxBufferGeometry(0.2, 0.2, 0.2), materials);
-cube.position.set(1, 1, 1);
-scene.add(cube);
+// ------------------- INIT -------------------
+window.addEventListener("load", () => {
+  const cameraEl = document.querySelector('#camera');
+  cameraEl.setAttribute('camera', 'fov', window.innerWidth < 768 ? 90 : 75);
 
-// Set up the WebGLRenderer, which handles rendering to the session's base layer.
-const renderer = new THREE.WebGLRenderer({
-  alpha: true,
-  preserveDrawingBuffer: true,
-  canvas: canvas,
-  context: gl
-});
-renderer.autoClear = false;
+  populateRooms();
 
-// The API directly updates the camera matrices.
-// Disable matrix auto updates so three.js doesn't attempt
-// to handle the matrices independently.
-const camera = new THREE.PerspectiveCamera();
-camera.matrixAutoUpdate = false;
+  const params = new URLSearchParams(window.location.search);
+  const floor = params.get("floor");
 
-// Initialize a WebXR session using "immersive-ar".
-const session = await navigator.xr.requestSession("immersive-ar");
-session.updateRenderState({
-  baseLayer: new XRWebGLLayer(session, gl)
+  if(floor && rooms[floor]) {
+    state.currentFloor = floor;
+    showStartText(floor);
+  } else {
+    document.getElementById("status").textContent = "❌ Invalid or missing floor QR";
+  }
 });
 
-// A 'local' reference space has a native origin that is located
-// near the viewer's position at the time the session was created.
-const referenceSpace = await session.requestReferenceSpace('local');
-
-// Create a render loop that allows us to draw on the AR view.
-const onXRFrame = (time, frame) => {
-  // Queue up the next draw request.
-  session.requestAnimationFrame(onXRFrame);
-
-  // Bind the graphics framebuffer to the baseLayer's framebuffer
-  gl.bindFramebuffer(gl.FRAMEBUFFER, session.renderState.baseLayer.framebuffer)
-
-  // Retrieve the pose of the device.
-  // XRFrame.getViewerPose can return null while the session attempts to establish tracking.
-  const pose = frame.getViewerPose(referenceSpace);
-  if (pose) {
-    // In mobile AR, we only have one view.
-    const view = pose.views[0];
-
-    const viewport = session.renderState.baseLayer.getViewport(view);
-    renderer.setSize(viewport.width, viewport.height)
-
-    // Use the view's transform matrix and projection matrix to configure the THREE.camera.
-    camera.matrix.fromArray(view.transform.matrix)
-    camera.projectionMatrix.fromArray(view.projectionMatrix);
-    camera.updateMatrixWorld(true);
-
-    // Render the scene with THREE.WebGLRenderer.
-    renderer.render(scene, camera)
+// ------------------- POPULATE ROOMS -------------------
+function populateRooms() {
+  const select = document.getElementById("roomSelect");
+  for(const floor in rooms) {
+    const group = document.createElement("optgroup");
+    group.label = `Floor ${floor}`;
+    rooms[floor].forEach(room => {
+      const option = document.createElement("option");
+      option.value = `${floor}-${room}`;
+      option.textContent = `Room ${room}`;
+      group.appendChild(option);
+    });
+    select.appendChild(group);
   }
 }
-session.requestAnimationFrame(onXRFrame);
+
+// ------------------- START NAVIGATION -------------------
+function startNavigation() {
+  const select = document.getElementById("roomSelect");
+  const room = select.value;
+  if(!room) return alert("Select a destination");
+  state.destination = room;
+  document.getElementById("status").textContent = `Navigating to Room ${room}`;
+  createArrows(room);
 }
 
+// ------------------- CREATE ARROWS -------------------
+function createArrows(roomId) {
+  const scene = document.querySelector('a-scene');
+  const positions = arrowPositions[roomId];
+  if(!positions) return;
+
+  positions.forEach(pos => {
+    const arrow = document.createElement('a-cone');
+    arrow.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+    arrow.setAttribute('rotation','0 0 0');
+    arrow.setAttribute('radius-bottom','0.2');
+    arrow.setAttribute('height','0.3');
+    arrow.setAttribute('color','#ffff00');
+    arrow.setAttribute('opacity', 1); 
+    scene.appendChild(arrow);
+  });
+}
+
+// ------------------- ARROW FADE -------------------
+function updateArrowFade() {
+  const cameraEl = document.querySelector('#camera');
+  if(!cameraEl.object3D) return;
+
+  const cameraPos = new THREE.Vector3();
+  cameraEl.object3D.getWorldPosition(cameraPos);
+
+  const arrows = document.querySelectorAll('a-scene a-cone');
+
+  arrows.forEach(arrow => {
+    const arrowPos = new THREE.Vector3();
+    arrow.object3D.getWorldPosition(arrowPos);
+    const distance = cameraPos.distanceTo(arrowPos);
+
+    if(distance < 1.0) {
+      const mesh = arrow.getObject3D('mesh');
+      if(mesh && mesh.material) {
+        mesh.material.transparent = true;
+        mesh.material.opacity = Math.max(0, mesh.material.opacity - 0.02);
+        if(mesh.material.opacity <= 0) arrow.remove();
+      }
+    }
+  });
+
+  requestAnimationFrame(updateArrowFade);
+}
+updateArrowFade();
+
+// ------------------- MARKER EVENTS -------------------
+const marker = document.querySelector('#floorMarker');
+marker.addEventListener('markerFound', ()=>document.getElementById('floorText').setAttribute('visible',true));
+marker.addEventListener('markerLost', ()=>document.getElementById('floorText').setAttribute('visible',false));
+
+// ------------------- SHOW START TEXT -------------------
+function showStartText(floor) {
+  const text = document.getElementById("floorText");
+  text.setAttribute('value', `📍 You are on Floor ${floor}\nStart here`);
+  text.setAttribute('visible', true);
+}
 </script>
+
 </body>
 </html>
