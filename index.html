@@ -46,12 +46,29 @@ button {
   background: #00ff88;
   font-weight: bold;
   cursor: pointer;
+  color: black;
+}
+
+button.secondary {
+  background: #ff6600;
 }
 
 #status {
   text-align: center;
   margin-bottom: 8px;
   font-size: 14px;
+  font-weight: bold;
+}
+
+#debug {
+  font-size: 11px;
+  color: #ffaa00;
+  margin-top: 10px;
+  max-height: 80px;
+  overflow-y: auto;
+  background: rgba(255,255,255,0.1);
+  padding: 8px;
+  border-radius: 6px;
 }
 
 </style>
@@ -61,18 +78,13 @@ button {
 
 <!-- AR SCENE -->
 <a-scene
-  arjs="trackingMethod: best; sourceType: webcam; facingMode: environment;"
-  renderer="alpha: true"
+  embedded
+  arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
   vr-mode-ui="enabled: false"
-  device-orientation-permission-ui="enabled: true"
-  renderer="antialias: true; precision: high"
-  vr-mode-ui="enabled: false"
-  trackingMethod: best;
->
+  renderer="logarithmicDepthBuffer: true; precision: medium;">
 
   <!-- CAMERA -->
-  <a-entity camera look-controls></a-entity>
-
+  <a-entity camera></a-entity>
 
 </a-scene>
 
@@ -81,17 +93,29 @@ button {
   <div id="status">Select destination</div>
   <select id="roomSelect"></select>
   <button onclick="startNavigation()">Start Navigation</button>
+  <button class="secondary" onclick="window.open('https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/hiro.png', '_blank')">
+    📥 Download HIRO Marker (for TEST)
+  </button>
+  <div id="debug">Ready. Select a destination...</div>
 </div>
 
 <script>
 // -------------------- ROOMS --------------------
 const rooms = {
+  0: ["TEST"],  // Test with HIRO marker
   1: ["101","102","103"],
   2: ["201","202","203"]
 };
 
 // -------------------- ROUTES (MARKER-BASED) --------------------
 const routes = {
+  // TEST ROUTE - Uses HIRO marker
+  "0-TEST": [
+    { id: "test1", preset: "hiro", text: "📍 Step 1: HIRO Test" },
+    { id: "test2", preset: "hiro", text: "✅ Navigation Works!" }
+  ],
+
+  // CUSTOM PATTERN ROUTES
   "1-101": [
     { id: "start1", patt: "patterns/floor1.patt", text: "📍 Start at Floor 1" },
     { id: "hall1", patt: "patterns/hallway1.patt", text: "➡ Go straight" },
@@ -103,6 +127,26 @@ const routes = {
     { id: "start1b", patt: "patterns/floor1.patt", text: "📍 Start at Floor 1" },
     { id: "hall2", patt: "patterns/hallway2.patt", text: "➡ Go straight" },
     { id: "room102", patt: "patterns/room102.patt", text: "✅ Room 102 reached!" }
+  ],
+
+  "1-103": [
+    { id: "start1c", patt: "patterns/floor1.patt", text: "📍 Start at Floor 1" },
+    { id: "room103", patt: "patterns/room103.patt", text: "✅ Room 103 reached!" }
+  ],
+
+  "2-201": [
+    { id: "start2", patt: "patterns/floor2.patt", text: "📍 Start at Floor 2" },
+    { id: "room201", patt: "patterns/room201.patt", text: "✅ Room 201 reached!" }
+  ],
+
+  "2-202": [
+    { id: "start2b", patt: "patterns/floor2.patt", text: "📍 Start at Floor 2" },
+    { id: "room202", patt: "patterns/room202.patt", text: "✅ Room 202 reached!" }
+  ],
+
+  "2-203": [
+    { id: "start2c", patt: "patterns/floor2.patt", text: "📍 Start at Floor 2" },
+    { id: "room203", patt: "patterns/room203.patt", text: "✅ Room 203 reached!" }
   ]
 };
 
@@ -113,15 +157,25 @@ function populateRooms() {
   const select = document.getElementById("roomSelect");
   for (const floor in rooms) {
     const group = document.createElement("optgroup");
-    group.label = `Floor ${floor}`;
+    group.label = floor === "0" ? "TEST" : `Floor ${floor}`;
     rooms[floor].forEach(room => {
       const option = document.createElement("option");
       option.value = `${floor}-${room}`;
-      option.textContent = `Room ${room}`;
+      option.textContent = room === "TEST" ? "Room TEST (HIRO)" : `Room ${room}`;
       group.appendChild(option);
     });
     select.appendChild(group);
   }
+}
+
+// -------------------- DEBUG --------------------
+function addDebug(msg, type = 'info') {
+  const debug = document.getElementById("debug");
+  const time = new Date().toLocaleTimeString();
+  const colors = { info: '#ffaa00', success: '#00ff88', error: '#ff4444' };
+  debug.innerHTML += `<div style="color: ${colors[type]}">[${time}] ${msg}</div>`;
+  debug.scrollTop = debug.scrollHeight;
+  console.log(msg);
 }
 
 // -------------------- START NAV --------------------
@@ -129,9 +183,12 @@ function startNavigation() {
   const roomKey = document.getElementById("roomSelect").value;
   if (!roomKey) return alert("Select a destination");
 
-  document.getElementById("status").textContent =
-    `Navigating to Room ${roomKey.split('-')[1]}`;
-
+  const roomName = roomKey.split('-')[1];
+  document.getElementById("status").textContent = `Navigating to ${roomName}`;
+  
+  document.getElementById("debug").innerHTML = "";
+  addDebug("🚀 Starting navigation...", "info");
+  
   clearMarkers();
   loadRoute(roomKey);
 }
@@ -140,49 +197,101 @@ function startNavigation() {
 function loadRoute(key) {
   const scene = document.querySelector("a-scene");
   const route = routes[key];
-  if (!route) return alert("No route defined");
+  
+  if (!route) {
+    addDebug("❌ No route defined for " + key, "error");
+    return alert("No route defined");
+  }
+
+  addDebug(`📍 Loading ${route.length} waypoints...`, "info");
 
   route.forEach((step, index) => {
     const marker = document.createElement("a-marker");
-    marker.setAttribute("type", "pattern");
-    marker.setAttribute("url", step.patt);
-    marker.setAttribute("id", step.id);
+    
+    // Use preset (HIRO) or custom pattern
+    if (step.preset) {
+      marker.setAttribute("preset", step.preset);
+      marker.setAttribute("id", step.id);
+      addDebug(`✅ Using built-in: ${step.preset}`, "success");
+    } else if (step.patt) {
+      marker.setAttribute("type", "pattern");
+      marker.setAttribute("url", step.patt);
+      marker.setAttribute("id", step.id);
+      
+      // Check if pattern file exists
+      fetch(step.patt)
+        .then(res => {
+          if (res.ok) {
+            addDebug(`✅ Pattern loaded: ${step.patt}`, "success");
+          } else {
+            addDebug(`❌ Pattern NOT found: ${step.patt}`, "error");
+          }
+        })
+        .catch(() => {
+          addDebug(`❌ Error loading: ${step.patt}`, "error");
+        });
+    }
 
+    // Create GREEN CONE ARROW
+    const arrow = document.createElement("a-cone");
+    arrow.setAttribute("position", "0 0.5 0");
+    arrow.setAttribute("rotation", "-90 0 0");
+    arrow.setAttribute("height", "0.5");
+    arrow.setAttribute("radius-bottom", "0.2");
+    arrow.setAttribute("color", "#00ff88");
+    arrow.setAttribute("material", "opacity: 1");
+
+    // Create YELLOW TEXT
     const text = document.createElement("a-text");
     text.setAttribute("value", step.text);
     text.setAttribute("color", "#ffff00");
     text.setAttribute("align", "center");
-    text.setAttribute("position", "0 0.4 0");
-    text.setAttribute("scale", "0.25 0.25 0.25");
+    text.setAttribute("position", "0 1 0");
+    text.setAttribute("scale", "0.5 0.5 0.5");
 
+    // Attach to marker
+    marker.appendChild(arrow);
     marker.appendChild(text);
 
-    // hide text initially EXCEPT first marker
-    if (index !== 0) text.setAttribute("visible", false);
+    // Hide all except first marker
+    if (index !== 0) {
+      arrow.setAttribute("visible", false);
+      text.setAttribute("visible", false);
+    }
 
+    // When marker is found
     marker.addEventListener("markerFound", () => {
-      console.log("FOUND:", step.id);
+      addDebug(`🎯 Marker detected: ${step.id}`, "success");
 
-      // hide current text
+      // Hide current marker's content
+      arrow.setAttribute("visible", false);
       text.setAttribute("visible", false);
 
-      // show next marker's text
+      // Show next marker's content
       const next = route[index + 1];
       if (next) {
         const nextMarker = document.getElementById(next.id);
-        if (nextMarker) {
-          nextMarker.children[0].setAttribute("visible", true);
+        if (nextMarker && nextMarker.children.length >= 2) {
+          nextMarker.children[0].setAttribute("visible", true); // arrow
+          nextMarker.children[1].setAttribute("visible", true); // text
+          addDebug(`➡️ Next: ${next.text}`, "info");
         }
       } else {
-        document.getElementById("status").textContent =
-          "🎉 Destination reached!";
+        document.getElementById("status").textContent = "🎉 Destination reached!";
+        addDebug("✅ You have arrived!", "success");
       }
+    });
+
+    // When marker is lost
+    marker.addEventListener("markerLost", () => {
+      addDebug(`👁️ Lost: ${step.id}`, "info");
     });
 
     scene.appendChild(marker);
   });
-}
 
+  addDebug("📸 Point camera at first marker", "info");
+}
 
 // -------------------- CLEAR OLD MARKERS --------------------
 function clearMarkers() {
