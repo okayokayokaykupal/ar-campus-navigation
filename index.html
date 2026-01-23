@@ -15,12 +15,24 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            overflow: hidden;
+			background-image: url("background.png");
+			background-color: #cccccc;
+			height: auto;
+			background-position: center;
+			background-repeat: no-repeat;
+			background-size: cover;
         }
+        
+		.boxbg {
+			position: absolute;
+			top: 0;
+			height: 100%;
+			width: 100%;
+			z-index: -1;
+			background-color: maroon;
+			opacity: 0.5;
 
+		}
         .screen {
             display: none;
             width: 100%;
@@ -30,6 +42,7 @@
         .screen.active {
             display: flex;
         }
+
         /* Home Screen */
         #homeScreen {
             flex-direction: column;
@@ -42,13 +55,13 @@
 
         h1 {
             font-size: 3em;
-            margin-bottom: 20px;
+            margin-bottom: 5px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
-
+        
         .subtitle {
             font-size: 1.2em;
-            margin-bottom: 40px;
+            margin-bottom: 25px;
             opacity: 0.9;
         }
 
@@ -56,9 +69,9 @@
             padding: 20px 60px;
             font-size: 1.5em;
             background: white;
-            color: #667eea;
+            color: maroon;
             border: none;
-            border-radius: 50px;
+            border-radius: 10px;
             cursor: pointer;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             transition: transform 0.3s, box-shadow 0.3s;
@@ -116,8 +129,7 @@
             50% { transform: scale(1.1); }
         }
 
-        /* Destination Screen */
-        #destScreen {
+                #destScreen {
             flex-direction: column;
             justify-content: center;
             align-items: center;
@@ -191,127 +203,12 @@
             cursor: not-allowed;
         }
 
-        /* AR Screen */
-        #arScreen {
-            position: relative;
-        }
-
-        .ar-controls {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-            background: rgba(0,0,0,0.8);
-            padding: 15px 30px;
-            border-radius: 10px;
-            color: white;
-            font-size: 1.1em;
-            text-align: center;
-        }
-
-        .ar-distance {
-            font-size: 2em;
-            font-weight: bold;
-            color: #00ff88;
-            margin-top: 5px;
-        }
-
-        .stop-btn {
-            position: absolute;
-            bottom: 40px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-            padding: 15px 40px;
-            font-size: 1.2em;
-            background: #ff4444;
-            color: white;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            font-weight: bold;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
-        }
-
-        .room-info {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(255,255,255,0.95);
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-            max-width: 400px;
-            width: 90%;
-            display: none;
-            z-index: 1001;
-        }
-
-        .room-info.active {
-            display: block;
-            animation: slideIn 0.3s;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translate(-50%, -40%);
-            }
-            to {
-                opacity: 1;
-                transform: translate(-50%, -50%);
-            }
-        }
-
-        .room-info h3 {
-            color: #667eea;
-            margin-bottom: 15px;
-            font-size: 1.5em;
-        }
-
-        .room-info p {
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 1em;
-            line-height: 1.6;
-        }
-
-        .close-btn {
-            width: 100%;
-            padding: 12px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1em;
-            font-weight: bold;
-        }
-
-        .arrow-indicator {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 4em;
-            color: #00ff88;
-            z-index: 999;
-            text-shadow: 0 0 20px rgba(0,255,136,0.8);
-            animation: bounce 1s infinite;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: translate(-50%, -50%) translateY(0); }
-            50% { transform: translate(-50%, -50%) translateY(-20px); }
-        }
     </style>
 </head>
 <body>
     <!-- Home Screen -->
     <div id="homeScreen" class="screen active">
-        <h1>🎓 Campus AR Navigator</h1>
+        <h1>Campus AR Room Navigator</h1>
         <p class="subtitle">Navigate your campus with augmented reality</p>
         <button class="start-btn" onclick="startApp()">Start Navigation</button>
     </div>
@@ -336,112 +233,23 @@
             <button class="nav-btn" onclick="startNavigation()">Start Navigation →</button>
         </div>
     </div>
-
-    <!-- AR Navigation Screen -->
-    <div id="arScreen" class="screen">
-	        <!-- 3D AR Scene -->
-<a-scene
-    embedded
-    arjs="sourceType: webcam; debugUIEnabled: false;"
-    vr-mode-ui="enabled: false"
-    renderer="alpha: true; antialias: true">
-
-            <a-camera></a-camera>
-			
-		            <!-- Animated navigation sphere -->
-            <a-sphere id="navMarker1" position="0 1.5 -2" radius="0.15" color="#00ff88" 
-                      opacity="0.8"
-                      animation="property: position; to: 0 1.8 -2; dir: alternate; dur: 800; loop: true"
-                      animation__2="property: scale; to: 1.2 1.2 1.2; dir: alternate; dur: 800; loop: true">
-            </a-sphere>
-            
-            <!-- Second marker -->
-            <a-sphere id="navMarker2" position="0.3 1.5 -2.5" radius="0.12" color="#00ffff" 
-                      opacity="0.7"
-                      animation="property: position; to: 0.3 1.7 -2.5; dir: alternate; dur: 1000; loop: true; delay: 200">
-            </a-sphere>
-            
-            <!-- Third marker -->
-            <a-sphere id="navMarker3" position="-0.3 1.5 -2.5" radius="0.12" color="#00ffff" 
-                      opacity="0.7"
-                      animation="property: position; to: -0.3 1.7 -2.5; dir: alternate; dur: 1000; loop: true; delay: 400">
-            </a-sphere>
-            
-            <!-- Direction arrow -->
-            <a-cone id="navArrow" position="0 2.2 -2" radius-bottom="0.2" radius-top="0" height="0.4" 
-                    color="#ffff00" rotation="0 0 0"
-                    animation="property: rotation; to: 0 360 0; dur: 3000; loop: true">
-            </a-cone>
-            
-            <!-- Navigation text -->
-            <a-text id="navText" value="Follow the path" position="0 2.5 -2.5" 
-                    align="center" color="#ffffff" width="3"
-                    animation="property: opacity; from: 0.5; to: 1; dir: alternate; dur: 1000; loop: true">
-            </a-text>
-        </a-scene>
-		
-        <div class="ar-controls">
-            <div>Navigating to: <strong><span id="destRoom">-</span></strong></div>
-            <div class="ar-distance" id="distanceDisplay">--m</div>
+    
+	<div id="destScreen" class="screen">
+        <div class="dest-container">
+            <h2>Select Destination</h2>
+            <div class="floor-badge" id="currentFloor">Floor -</div>
+            <label for="roomSelect">Choose Room:</label>
+            <select id="roomSelect">
+                <option value="">Select a room...</option>
+            </select>
+            <button class="nav-btn" onclick="startNavigation()">Start Navigation →</button>
         </div>
-        <div class="arrow-indicator" id="arrowIndicator">↑</div>
-        <button class="stop-btn" onclick="stopNavigation()">🎯 I've Arrived</button>
-        <div id="roomInfo" class="room-info">
-            <h3 id="roomTitle">Room 101</h3>
-            <p id="roomDesc">Computer Laboratory</p>
-            <button class="close-btn" onclick="closeRoomInfo()">Done</button>
-        </div>
-
-            
     </div>
 
-    <script>
-        // Application state
-        const state = {
-            currentFloor: null,
-            selectedRoom: null,
-            navigating: false,
-            distance: 25
-        };
+    <div class = "boxbg"></div>
 
-        // Room database
-        const rooms = {
-            '1': [
-                { id: '101', name: 'Room 101', desc: 'Computer Laboratory - Equipped with 40 workstations, projection system, and air conditioning.' },
-                { id: '102', name: 'Room 102', desc: 'Physics Laboratory - Advanced equipment for experimental physics and mechanics.' },
-                { id: '103', name: 'Room 103', desc: 'Lecture Hall - Capacity for 100 students with multimedia facilities and sound system.' },
-                { id: '104', name: 'Room 104', desc: 'Faculty Office - Administrative and teaching staff offices with conference area.' },
-                { id: '105', name: 'Room 105', desc: 'Library - Extensive collection of academic resources, reading areas, and study rooms.' }
-            ],
-            '2': [
-                { id: '201', name: 'Room 201', desc: 'Chemistry Laboratory - Fully equipped for chemical experiments with safety equipment.' },
-                { id: '202', name: 'Room 202', desc: 'Biology Laboratory - Microscopy facilities, specimen collection, and dissection area.' },
-                { id: '203', name: 'Room 203', desc: 'Standard Classroom - Comfortable seating for 50 students with whiteboard and projector.' },
-                { id: '204', name: 'Room 204', desc: 'Seminar Room - Collaborative learning space with round tables and presentation tools.' },
-                { id: '205', name: 'Room 205', desc: 'Research Lab - Advanced research facilities for graduate students and faculty.' }
-            ],
-            '3': [
-                { id: '301', name: 'Room 301', desc: 'Engineering Workshop - Hands-on engineering projects with tools and workbenches.' },
-                { id: '302', name: 'Room 302', desc: 'Design Studio - Creative design space with drafting tables and computers.' },
-                { id: '303', name: 'Room 303', desc: 'Conference Room - Professional meeting space with video conferencing equipment.' },
-                { id: '304', name: 'Room 304', desc: 'Study Hall - Quiet study environment with individual desks and power outlets.' },
-                { id: '305', name: 'Room 305', desc: 'Media Center - Audio-visual production with editing suites and recording booth.' }
-            ],
-            '4': [
-                { id: '401', name: 'Room 401', desc: 'Mathematics Classroom - Advanced mathematics instruction with smart boards.' },
-                { id: '402', name: 'Room 402', desc: 'Language Lab - Multimedia language learning with audio stations and software.' },
-                { id: '403', name: 'Room 403', desc: 'Art Studio - Creative arts space with easels, storage, and natural lighting.' },
-                { id: '404', name: 'Room 404', desc: 'Music Room - Practice and performance space with piano and acoustic treatment.' },
-                { id: '405', name: 'Room 405', desc: 'Student Lounge - Relaxation area with sofas, vending machines, and games.' }
-            ],
-            '5': [
-                { id: '501', name: 'Room 501', desc: 'Auditorium - Main events hall with stage, lighting, and seating for 300.' },
-                { id: '502', name: 'Room 502', desc: 'Rooftop Garden - Outdoor study space with plants, benches, and city views.' },
-                { id: '503', name: 'Room 503', desc: 'Cafeteria - Dining hall with food stations, seating for 200, and WiFi.' },
-                { id: '504', name: 'Room 504', desc: 'Gymnasium - Indoor sports facility with basketball court and fitness equipment.' },
-                { id: '505', name: 'Room 505', desc: 'Administration - Main office with registrar, admissions, and student services.' }
-            ]
-        };
+
+    <script>
 
         // Html5Qrcode scanner
         let html5QrCode = null;
@@ -535,79 +343,34 @@ async function handleQRCode(data) {
     setTimeout(() => detectFloor(floor), 500);
 }
 
-
         // Floor detected
         function detectFloor(floor) {
             state.currentFloor = floor;
             document.getElementById('currentFloor').textContent = `Floor ${floor}`;
-            populateRooms(floor);
+            populateRooms();
             switchScreen('destScreen');
         }
 
         // Populate room dropdown
-        function populateRooms(floor) {
-            const select = document.getElementById('roomSelect');
-            select.innerHTML = '<option value="">Select a room...</option>';
-            
-            rooms[floor].forEach(room => {
-                const option = document.createElement('option');
-                option.value = room.id;
-                option.textContent = room.name;
-                select.appendChild(option);
-            });
-        }
+function populateRooms() {
+    const select = document.getElementById('roomSelect');
+    select.innerHTML = '<option value="">Select a room...</option>';
 
-        // Start AR navigation
-        function startNavigation() {
-            const roomId = document.getElementById('roomSelect').value;
-            if (!roomId) {
-                alert('Please select a room first');
-                return;
-            }
-            
-            const room = rooms[state.currentFloor].find(r => r.id === roomId);
-            state.selectedRoom = room;
-            state.navigating = true;
-            state.distance = 25;
-            
-            document.getElementById('destRoom').textContent = room.name;
-            switchScreen('arScreen');
-            
-            updateDistance();
-        }
+    for (const floor in rooms) {
+        const group = document.createElement('optgroup');
+        group.label = `Floor ${floor}`;
 
-        // Update distance simulation
-        function updateDistance() {
-            if (!state.navigating) return;
-            
-            const distDisplay = document.getElementById('distanceDisplay');
-            distDisplay.textContent = state.distance + 'm';
-            
-            if (state.distance > 0) {
-                state.distance = Math.max(0, state.distance - 1);
-                setTimeout(updateDistance, 800);
-            } else {
-                document.getElementById('arrowIndicator').style.display = 'none';
-            }
-        }
+        rooms[floor].forEach(room => {
+            const option = document.createElement('option');
+            option.value = `${floor}-${room.id}`;
+            option.textContent = room.name;
+            group.appendChild(option);
+        });
 
-        // Stop navigation and show room info
-        function stopNavigation() {
-            state.navigating = false;
-            document.getElementById('roomTitle').textContent = state.selectedRoom.name;
-            document.getElementById('roomDesc').textContent = state.selectedRoom.desc;
-            document.getElementById('roomInfo').classList.add('active');
-        }
+        select.appendChild(group);
+    }
+}
 
-        // Close room info
-        function closeRoomInfo() {
-            document.getElementById('roomInfo').classList.remove('active');
-            document.getElementById('arrowIndicator').style.display = 'block';
-            switchScreen('homeScreen');
-            state.currentFloor = null;
-            state.selectedRoom = null;
-            state.distance = 25;
-        }
 
         // Switch between screens
         function switchScreen(screenId) {
@@ -617,4 +380,3 @@ async function handleQRCode(data) {
     </script>
 </body>
 </html>
-
