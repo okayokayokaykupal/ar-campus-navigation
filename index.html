@@ -48,12 +48,50 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  background: #666;
+  cursor: not-allowed;
+}
+
 #status {
   text-align: center;
   margin-bottom: 8px;
   font-size: 14px;
 }
 
+#debug {
+  font-size: 12px;
+  color: #ffaa00;
+  margin-top: 10px;
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.tab {
+  display: inline-block;
+  padding: 8px 16px;
+  margin: 5px;
+  background: #333;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.tab.active {
+  background: #00ff88;
+  color: black;
+}
+
+#patternMode, #builtinMode {
+  display: none;
+}
+
+#patternMode.active, #builtinMode.active {
+  display: block;
+}
+
+a {
+  color: #00ff88;
+}
 </style>
 </head>
 
@@ -61,142 +99,93 @@ button {
 
 <!-- AR SCENE -->
 <a-scene
-  arjs="trackingMethod: best; sourceType: webcam; facingMode: environment;"
-  renderer="alpha: true"
-  vr-mode-ui="enabled: false"
-  device-orientation-permission-ui="enabled: true"
-  renderer="antialias: true; precision: high"
-  vr-mode-ui="enabled: false"
-  trackingMethod: best;
->
+  embedded
+  arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
+  vr-mode-ui="enabled: false">
 
-  <!-- CAMERA -->
-  <a-entity camera look-controls></a-entity>
+  <a-entity camera></a-entity>
 
-  <a-cone
-  position="0 0.2 0"
-  rotation="-90 0 0"
-  height="0.3"
-  radius-bottom="0.15"
-  color="yellow"
-  scale="0.4 0.4 0.4">
-</a-cone>
+  <!-- Built-in marker test -->
+  <a-marker preset="hiro" id="testMarker">
+    <a-cone
+      position="0 0.5 0"
+      rotation="-90 0 0"
+      height="0.5"
+      radius-bottom="0.2"
+      color="#00ff88">
+    </a-cone>
+    <a-text
+      value="Test Marker Works!"
+      color="#ffff00"
+      align="center"
+      position="0 1 0"
+      scale="0.5 0.5 0.5">
+    </a-text>
+  </a-marker>
 
 </a-scene>
 
 <!-- UI -->
 <div id="ui">
-  <div id="status">Select destination</div>
-  <select id="roomSelect"></select>
-  <button onclick="startNavigation()">Start Navigation</button>
+  <div id="status">Choose marker type:</div>
+  
+  <div>
+    <span class="tab active" onclick="switchTab('builtin')">Built-in Markers</span>
+    <span class="tab" onclick="switchTab('pattern')">Custom Patterns</span>
+  </div>
+
+  <!-- BUILT-IN MODE -->
+  <div id="builtinMode" class="active">
+    <select id="builtinSelect">
+      <option value="hiro">HIRO Marker → Room 101</option>
+      <option value="kanji">KANJI Marker → Room 102</option>
+    </select>
+    <button onclick="startBuiltinNav()">Start Navigation (Built-in)</button>
+    <button onclick="window.open('https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/hiro.png', '_blank')">📥 Get HIRO Marker</button>
+    <button onclick="window.open('https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/kanji.png', '_blank')">📥 Get KANJI Marker</button>
+  </div>
+
+  <!-- PATTERN MODE -->
+  <div id="patternMode">
+    <select id="roomSelect"></select>
+    <button onclick="startPatternNav()">Start Navigation (Custom)</button>
+    <div style="font-size: 12px; margin-top: 8px; color: #ffaa00;">
+      ⚠️ Requires .patt files in /patterns/ folder
+    </div>
+  </div>
+
+  <div id="debug">Ready. Camera initializing...</div>
 </div>
 
 <script>
 // -------------------- ROOMS --------------------
 const rooms = {
+  0: ["TEST"],  // Test room using HIRO
   1: ["101","102","103"],
   2: ["201","202","203"]
 };
 
-// -------------------- ROUTES (MARKER-BASED) --------------------
+// -------------------- ROUTES (CUSTOM PATTERNS) --------------------
 const routes = {
   "1-101": [
-    { id: "start1", patt: "patterns/floor1.patt", text: "📍 Start at Floor 1" },
+    { id: "start1", patt: "patterns/floor1.patt", text: "📍 Start Floor 1" },
     { id: "hall1", patt: "patterns/hallway1.patt", text: "➡ Go straight" },
     { id: "turn1", patt: "patterns/turnleft.patt", text: "↩ Turn left" },
-    { id: "room101", patt: "patterns/room101.patt", text: "✅ Room 101 reached!" }
+    { id: "room101", patt: "patterns/room101.patt", text: "✅ Room 101!" }
   ],
-
   "1-102": [
-    { id: "start1b", patt: "patterns/floor1.patt", text: "📍 Start at Floor 1" },
+    { id: "start1b", patt: "patterns/floor1.patt", text: "📍 Start Floor 1" },
     { id: "hall2", patt: "patterns/hallway2.patt", text: "➡ Go straight" },
-    { id: "room102", patt: "patterns/room102.patt", text: "✅ Room 102 reached!" }
+    { id: "room102", patt: "patterns/room102.patt", text: "✅ Room 102!" }
   ]
 };
 
-// -------------------- INIT --------------------
-window.addEventListener("load", populateRooms);
-
-function populateRooms() {
-  const select = document.getElementById("roomSelect");
-  for (const floor in rooms) {
-    const group = document.createElement("optgroup");
-    group.label = `Floor ${floor}`;
-    rooms[floor].forEach(room => {
-      const option = document.createElement("option");
-      option.value = `${floor}-${room}`;
-      option.textContent = `Room ${room}`;
-      group.appendChild(option);
-    });
-    select.appendChild(group);
-  }
-}
-
-// -------------------- START NAV --------------------
-function startNavigation() {
-  const roomKey = document.getElementById("roomSelect").value;
-  if (!roomKey) return alert("Select a destination");
-
-  document.getElementById("status").textContent =
-    `Navigating to Room ${roomKey.split('-')[1]}`;
-
-  clearMarkers();
-  loadRoute(roomKey);
-}
-
-// -------------------- LOAD ROUTE --------------------
-function loadRoute(key) {
-  const scene = document.querySelector("a-scene");
-  const route = routes[key];
-  if (!route) return alert("No route defined");
-
-  route.forEach((step, index) => {
-    const marker = document.createElement("a-marker");
-    marker.setAttribute("type", "pattern");
-    marker.setAttribute("url", step.patt);
-    marker.setAttribute("id", step.id);
-
-    const text = document.createElement("a-text");
-    text.setAttribute("value", step.text);
-    text.setAttribute("color", "#ffff00");
-    text.setAttribute("align", "center");
-    text.setAttribute("position", "0 0.4 0");
-    text.setAttribute("scale", "0.25 0.25 0.25");
-
-    marker.appendChild(text);
-
-    // hide text initially EXCEPT first marker
-    if (index !== 0) text.setAttribute("visible", false);
-
-    marker.addEventListener("markerFound", () => {
-      console.log("FOUND:", step.id);
-
-      // hide current text
-      text.setAttribute("visible", false);
-
-      // show next marker's text
-      const next = route[index + 1];
-      if (next) {
-        const nextMarker = document.getElementById(next.id);
-        if (nextMarker) {
-          nextMarker.children[0].setAttribute("visible", true);
-        }
-      } else {
-        document.getElementById("status").textContent =
-          "🎉 Destination reached!";
-      }
-    });
-
-    scene.appendChild(marker);
-  });
-}
-
-
-// -------------------- CLEAR OLD MARKERS --------------------
-function clearMarkers() {
-  document.querySelectorAll("a-marker").forEach(m => m.remove());
-}
-</script>
-
-</body>
-</html>
+// -------------------- BUILT-IN ROUTES --------------------
+const builtinRoutes = {
+  "hiro": [
+    { preset: "hiro", text: "📍 Start at entrance", next: "➡ Head to hallway" },
+    { preset: "hiro", text: "➡ Continue straight", next: "↩ Turn at corner" },
+    { preset: "hiro", text: "✅ Room 101 reached!" }
+  ],
+  "kanji": [
+    { preset: "kanji", text: "📍
