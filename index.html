@@ -78,14 +78,10 @@ button.secondary {
 
 <!-- AR SCENE -->
 <a-scene
-  arjs="trackingMethod: best; sourceType: webcam; facingMode: environment;"
-  renderer="alpha: true"
+  embedded
+  arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
   vr-mode-ui="enabled: false"
-  device-orientation-permission-ui="enabled: true"
-  renderer="antialias: true; precision: high"
-  vr-mode-ui="enabled: false"
-  trackingMethod: best;
->
+  renderer="logarithmicDepthBuffer: true; precision: medium; alpha: true;">
 
   <!-- CAMERA -->
   <a-entity camera look-controls></a-entity>
@@ -305,4 +301,5 @@ function clearMarkers() {
 
 </body>
 </html>
+
 
