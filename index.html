@@ -112,7 +112,7 @@ const rooms = {
 
 const arrowPositions = {
   "1-101": [{x:0, y:0, z:-2}, {x:0, y:0, z:-4}],
-  "1-102": [{x:1, y:0, z:-2}, {x:1, y:0, z:-4}],
+  "1-102": [{x:0, y:0, z:-2}, {x:0, y:1 , z:0}],
   "5-501": [{x:0, y:0, z:-1}, {x:0.5, y:0, z:-2.5}, {x:1, y:0, z:-4}],
 };
 
@@ -173,7 +173,7 @@ function createArrows(roomId) {
     arrow.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
     arrow.setAttribute('rotation','0 0 0');
     arrow.setAttribute('radius-bottom','0.2');
-    arrow.setAttribute('height','0.5');
+    arrow.setAttribute('height','0.3');
     arrow.setAttribute('color','#ffff00');
     arrow.setAttribute('opacity', 1); 
     scene.appendChild(arrow);
