@@ -1,79 +1,330 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
-  <title>Hello WebXR!</title>
+<meta charset="UTF-8">
+<title>Campus AR Navigator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- three.js r128 (compatible with AR.js) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <!-- AR.js -->
-  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/three.js/build/ar-threex.js"></script>
+<!-- Three.js r128 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- AR.js -->
+<script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/three.js/build/ar-threex.js"></script>
+
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
+}
+
+#arCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#ui {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.85);
+  padding: 15px;
+  border-radius: 12px;
+  color: white;
+  width: 90%;
+  max-width: 400px;
+  z-index: 10;
+}
+
+select, button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  border-radius: 8px;
+  border: none;
+  font-size: 16px;
+}
+
+button {
+  background: #00ff88;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #00dd77;
+}
+
+#status {
+  text-align: center;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.instruction-text {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 0, 0.9);
+  color: black;
+  padding: 15px 20px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 18px;
+  z-index: 5;
+  display: none;
+  text-align: center;
+  max-width: 80%;
+}
+</style>
 </head>
-<body style="margin:0; overflow:hidden;">
+
+<body>
+
+<!-- Instruction overlay -->
+<div id="instructionOverlay" class="instruction-text"></div>
+
+<!-- UI -->
+<div id="ui">
+  <div id="status">Select destination</div>
+  <select id="roomSelect"></select>
+  <button onclick="startNavigation()">Start Navigation</button>
+</div>
 
 <script>
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-scene.add(camera);
+// -------------------- ROOMS --------------------
+const rooms = {
+  1: ["101","102","103"],
+  2: ["201","202","203"]
+};
 
-const renderer = new THREE.WebGLRenderer({
-  antialias: true, 
-  alpha: true
-});
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+// -------------------- ROUTES (MARKER-BASED) --------------------
+const routes = {
+  "1-101": [
+    { id: "start1", patt: "patterns/floor1.patt", text: "📍 Start at Floor 1" },
+    { id: "hall1", patt: "patterns/hallway1.patt", text: "➡ Go straight" },
+    { id: "turn1", patt: "patterns/turnleft.patt", text: "↩ Turn left" },
+    { id: "room101", patt: "patterns/room101.patt", text: "✅ Room 101 reached!" }
+  ],
 
-var ArToolkitSource = new THREEx.ArToolkitSource({
-  sourceType: "webcam"
-});
+  "1-102": [
+    { id: "start1b", patt: "patterns/floor1.patt", text: "📍 Start at Floor 1" },
+    { id: "hall2", patt: "patterns/hallway2.patt", text: "➡ Go straight" },
+    { id: "room102", patt: "patterns/room102.patt", text: "✅ Room 102 reached!" }
+  ],
 
-ArToolkitSource.init(function(){
-  setTimeout(function(){
-    ArToolkitSource.onResizeElement();
-    ArToolkitSource.copyElementSizeTo(renderer.domElement);
-  }, 2000);
-});
+  "1-103": [
+    { id: "start1c", patt: "patterns/floor1.patt", text: "📍 Start at Floor 1" },
+    { id: "hall3", patt: "patterns/hallway1.patt", text: "➡ Go straight" },
+    { id: "turn2", patt: "patterns/turnright.patt", text: "↪ Turn right" },
+    { id: "room103", patt: "patterns/room103.patt", text: "✅ Room 103 reached!" }
+  ],
 
-var ArToolkitContext = new THREEx.ArToolkitContext({
-  cameraParametersUrl: 'https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/data/data/camera_para.dat',
-  detectionMode: 'mono'
-});
+  "2-201": [
+    { id: "stairs", patt: "patterns/stairs.patt", text: "⬆ Go upstairs to Floor 2" },
+    { id: "floor2start", patt: "patterns/floor2.patt", text: "📍 Floor 2 reached" },
+    { id: "hall4", patt: "patterns/hallway2.patt", text: "➡ Go straight" },
+    { id: "room201", patt: "patterns/room201.patt", text: "✅ Room 201 reached!" }
+  ]
+};
 
-ArToolkitContext.init(function(){
-  camera.projectionMatrix.copy(ArToolkitContext.getProjectionMatrix());
-});
+// -------------------- THREE.JS + AR.js SETUP --------------------
+let scene, camera, renderer;
+let arToolkitSource, arToolkitContext;
+let currentRoute = [];
+let currentStepIndex = 0;
+let markerControls = [];
 
-var ArMarkerControls = new THREEx.ArMarkerControls(ArToolkitContext, camera, {
-  type: 'pattern',
-  patternUrl: 'patterns/hallway1.patt',  // Replace with your pattern file path
-  changeMatrixMode: 'cameraTransformMatrix'
-});
+function initAR() {
+  // Scene
+  scene = new THREE.Scene();
+  
+  // Camera
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  scene.add(camera);
+  
+  // Renderer
+  renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    alpha: true
+  });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.domElement.id = 'arCanvas';
+  document.body.appendChild(renderer.domElement);
+  
+  // AR Toolkit Source (webcam)
+  arToolkitSource = new THREEx.ArToolkitSource({
+    sourceType: "webcam"
+  });
+  
+  arToolkitSource.init(function onReady() {
+    setTimeout(function() {
+      onResize();
+    }, 2000);
+  });
+  
+  // AR Toolkit Context
+  arToolkitContext = new THREEx.ArToolkitContext({
+    cameraParametersUrl: 'https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/data/data/camera_para.dat',
+    detectionMode: 'mono'
+  });
+  
+  arToolkitContext.init(function onCompleted() {
+    camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
+  });
+  
+  // Handle resize
+  window.addEventListener('resize', onResize);
+  
+  // Start animation loop
+  animate();
+}
 
-scene.visible = false;
-
-const geometry = new THREE.BoxGeometry(1, 1, 1);
-const material = new THREE.MeshNormalMaterial({ 
-  transparent: true, 
-  opacity: 0.5, 
-  side: THREE.DoubleSide
-});
-const cube = new THREE.Mesh(geometry, material);
-cube.position.y = geometry.parameters.height / 2;
-scene.add(cube);
+function onResize() {
+  arToolkitSource.onResizeElement();
+  arToolkitSource.copyElementSizeTo(renderer.domElement);
+  if (arToolkitContext.arController !== null) {
+    arToolkitSource.copyElementSizeTo(arToolkitContext.arController.canvas);
+  }
+}
 
 function animate() {
   requestAnimationFrame(animate);
   
-  if (ArToolkitSource.ready) {
-    ArToolkitContext.update(ArToolkitSource.domElement);
-    scene.visible = camera.visible;
+  if (arToolkitSource.ready) {
+    arToolkitContext.update(arToolkitSource.domElement);
   }
   
   renderer.render(scene, camera);
 }
 
-animate();
+// -------------------- INIT --------------------
+window.addEventListener("load", function() {
+  populateRooms();
+  initAR();
+});
+
+function populateRooms() {
+  const select = document.getElementById("roomSelect");
+  for (const floor in rooms) {
+    const group = document.createElement("optgroup");
+    group.label = `Floor ${floor}`;
+    rooms[floor].forEach(room => {
+      const option = document.createElement("option");
+      option.value = `${floor}-${room}`;
+      option.textContent = `Room ${room}`;
+      group.appendChild(option);
+    });
+    select.appendChild(group);
+  }
+}
+
+// -------------------- START NAV --------------------
+function startNavigation() {
+  const roomKey = document.getElementById("roomSelect").value;
+  if (!roomKey) return alert("Select a destination");
+
+  document.getElementById("status").textContent =
+    `Navigating to Room ${roomKey.split('-')[1]}`;
+
+  clearMarkers();
+  loadRoute(roomKey);
+}
+
+// -------------------- LOAD ROUTE --------------------
+function loadRoute(key) {
+  const route = routes[key];
+  if (!route) return alert("No route defined for this room");
+
+  currentRoute = route;
+  currentStepIndex = 0;
+  
+  route.forEach((step, index) => {
+    // Create marker root
+    const markerRoot = new THREE.Group();
+    markerRoot.name = step.id;
+    scene.add(markerRoot);
+    
+    // Create marker controls
+    const markerControl = new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
+      type: 'pattern',
+      patternUrl: step.patt,
+      changeMatrixMode: 'cameraTransformMatrix'
+    });
+    
+    // Create 3D arrow or cube indicator
+    const geometry = new THREE.ConeGeometry(0.3, 0.6, 8);
+    const material = new THREE.MeshBasicMaterial({ 
+      color: index === 0 ? 0x00ff00 : 0xffff00,
+      transparent: true,
+      opacity: 0.8
+    });
+    const cone = new THREE.Mesh(geometry, material);
+    cone.position.y = 0.5;
+    cone.rotation.x = Math.PI; // Point down
+    markerRoot.add(cone);
+    
+    // Add pulsing animation
+    let scale = 1;
+    let growing = true;
+    
+    markerControl.addEventListener('markerFound', function() {
+      console.log('Marker found:', step.id);
+      showInstruction(step.text);
+      
+      // If not the last step, advance to next
+      if (index < route.length - 1) {
+        setTimeout(function() {
+          currentStepIndex = index + 1;
+          // Change color of current marker to green
+          material.color.setHex(0x00ff00);
+        }, 1500);
+      } else {
+        // Last marker - destination reached
+        setTimeout(function() {
+          document.getElementById("status").textContent = "🎉 Destination reached!";
+          showInstruction("🎉 You have arrived!");
+        }, 1500);
+      }
+    });
+    
+    markerControl.addEventListener('markerLost', function() {
+      console.log('Marker lost:', step.id);
+      hideInstruction();
+    });
+    
+    markerControls.push({ control: markerControl, root: markerRoot, mesh: cone });
+  });
+}
+
+function showInstruction(text) {
+  const overlay = document.getElementById('instructionOverlay');
+  overlay.textContent = text;
+  overlay.style.display = 'block';
+}
+
+function hideInstruction() {
+  const overlay = document.getElementById('instructionOverlay');
+  overlay.style.display = 'none';
+}
+
+// -------------------- CLEAR OLD MARKERS --------------------
+function clearMarkers() {
+  markerControls.forEach(mc => {
+    scene.remove(mc.root);
+  });
+  markerControls = [];
+  currentRoute = [];
+  currentStepIndex = 0;
+  hideInstruction();
+}
 </script>
 
 </body>
