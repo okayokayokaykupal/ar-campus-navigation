@@ -16,9 +16,9 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  font-family: Arial, sans-serif;
 }
 
-/* UI PANEL */
 #ui {
   position: fixed;
   bottom: 20px;
@@ -41,6 +41,7 @@ select, button {
   border: none;
   font-size: 16px;
 }
+
 button {
   background: #00ff88;
   font-weight: bold;
@@ -53,93 +54,60 @@ button {
   font-size: 14px;
 }
 
-/* Mobile text scaling */
-@media (max-width: 768px) {
-  a-text { transform: scale(1 1 1); }
-  a-cone { transform: scale(0.8 0.8 0.8); }
-}
-
-/* Desktop scaling */
-@media (min-width: 769px) {
-  a-text { transform: scale(1.5 1.5 1.5); }
-  a-cone { transform: scale(1 1 1); }
-}
-
 </style>
 </head>
+
 <body>
 
 <!-- AR SCENE -->
 <a-scene
-  embedded
   arjs="trackingMethod: best; sourceType: webcam; facingMode: environment;"
-  renderer="alpha: true; physicallyCorrectLights: true"
+  renderer="alpha: true"
   vr-mode-ui="enabled: false"
   device-orientation-permission-ui="enabled: true"
 >
 
-  <!-- Camera -->
-  <a-entity id="camera" camera look-controls near="0.1" far="1000"></a-entity>
-
-  <!-- Floor Marker -->
-  <a-marker type="barcode" value="1" id="floorMarker">
-    <a-text id="floorText"
-            value="You're on Floor 1\nSelect your destination"
-            position="0 0 0"
-            color="#00ff88"
-            scale="1 1 1">
-    </a-text>
-  </a-marker>
+  <!-- CAMERA -->
+  <a-entity camera look-controls></a-entity>
 
 </a-scene>
 
 <!-- UI -->
 <div id="ui">
-  <div id="status">Waiting for destination…</div>
+  <div id="status">Select destination</div>
   <select id="roomSelect"></select>
   <button onclick="startNavigation()">Start Navigation</button>
 </div>
 
 <script>
-// ------------------- DATA -------------------
+// -------------------- ROOMS --------------------
 const rooms = {
-  1: ["101","102","103","104","105"],
-  2: ["201","202","203","204","205"],
-  3: ["301","302","303","304","305"],
-  4: ["401","402","403","404","405"],
-  5: ["501","502","503","504","505"]
+  1: ["101","102","103"],
+  2: ["201","202","203"]
 };
 
-const arrowPositions = {
-  "1-101": [{x:0, y:0, z:-2}, {x:0, y:0, z:-4}],
-  "1-102": [{x:0, y:0, z:-2}, {x:0, y:1 , z:0}],
-  "5-501": [{x:0, y:0, z:-1}, {x:0.5, y:0, z:-2.5}, {x:1, y:0, z:-4}],
+// -------------------- ROUTES (MARKER-BASED) --------------------
+const routes = {
+  "1-101": [
+    { id: "start1", patt: "patterns/floor1.patt", text: "📍 Start at Floor 1" },
+    { id: "hall1", patt: "patterns/hallway1.patt", text: "➡ Go straight" },
+    { id: "turn1", patt: "patterns/turnleft.patt", text: "↩ Turn left" },
+    { id: "room101", patt: "patterns/room101.patt", text: "✅ Room 101 reached!" }
+  ],
+
+  "1-102": [
+    { id: "start1b", patt: "patterns/floor1.patt", text: "📍 Start at Floor 1" },
+    { id: "hall2", patt: "patterns/hallway2.patt", text: "➡ Go straight" },
+    { id: "room102", patt: "patterns/room102.patt", text: "✅ Room 102 reached!" }
+  ]
 };
 
-const state = { currentFloor: null, destination: null };
+// -------------------- INIT --------------------
+window.addEventListener("load", populateRooms);
 
-// ------------------- INIT -------------------
-window.addEventListener("load", () => {
-  const cameraEl = document.querySelector('#camera');
-  cameraEl.setAttribute('camera', 'fov', window.innerWidth < 768 ? 90 : 75);
-
-  populateRooms();
-
-  const params = new URLSearchParams(window.location.search);
-  const floor = params.get("floor");
-
-  if(floor && rooms[floor]) {
-    state.currentFloor = floor;
-    showStartText(floor);
-  } else {
-    document.getElementById("status").textContent = "❌ Invalid or missing floor QR";
-  }
-});
-
-// ------------------- POPULATE ROOMS -------------------
 function populateRooms() {
   const select = document.getElementById("roomSelect");
-  for(const floor in rooms) {
+  for (const floor in rooms) {
     const group = document.createElement("optgroup");
     group.label = `Floor ${floor}`;
     rooms[floor].forEach(room => {
@@ -152,73 +120,59 @@ function populateRooms() {
   }
 }
 
-// ------------------- START NAVIGATION -------------------
+// -------------------- START NAV --------------------
 function startNavigation() {
-  const select = document.getElementById("roomSelect");
-  const room = select.value;
-  if(!room) return alert("Select a destination");
-  state.destination = room;
-  document.getElementById("status").textContent = `Navigating to Room ${room}`;
-  createArrows(room);
+  const roomKey = document.getElementById("roomSelect").value;
+  if (!roomKey) return alert("Select a destination");
+
+  document.getElementById("status").textContent =
+    `Navigating to Room ${roomKey.split('-')[1]}`;
+
+  clearMarkers();
+  loadRoute(roomKey);
 }
 
-// ------------------- CREATE ARROWS -------------------
-function createArrows(roomId) {
-  const scene = document.querySelector('a-scene');
-  const positions = arrowPositions[roomId];
-  if(!positions) return;
+// -------------------- LOAD ROUTE --------------------
+function loadRoute(key) {
+  const scene = document.querySelector("a-scene");
+  const route = routes[key];
+  if (!route) return alert("No route defined");
 
-  positions.forEach(pos => {
-    const arrow = document.createElement('a-cone');
-    arrow.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
-    arrow.setAttribute('rotation','0 0 0');
-    arrow.setAttribute('radius-bottom','0.2');
-    arrow.setAttribute('height','0.3');
-    arrow.setAttribute('color','#ffff00');
-    arrow.setAttribute('opacity', 1); 
-    scene.appendChild(arrow);
-  });
-}
+  route.forEach((step, index) => {
+    const marker = document.createElement("a-marker");
+    marker.setAttribute("type", "pattern");
+    marker.setAttribute("url", step.patt);
+    marker.setAttribute("id", step.id);
+    marker.setAttribute("visible", index === 0);
 
-// ------------------- ARROW FADE -------------------
-function updateArrowFade() {
-  const cameraEl = document.querySelector('#camera');
-  if(!cameraEl.object3D) return;
+    const text = document.createElement("a-text");
+    text.setAttribute("value", step.text);
+    text.setAttribute("color", "#ffff00");
+    text.setAttribute("align", "center");
+    text.setAttribute("position", "0 0 0");
+    text.setAttribute("scale", "1 1 1");
 
-  const cameraPos = new THREE.Vector3();
-  cameraEl.object3D.getWorldPosition(cameraPos);
+    marker.appendChild(text);
 
-  const arrows = document.querySelectorAll('a-scene a-cone');
+    marker.addEventListener("markerFound", () => {
+      marker.setAttribute("visible", false);
 
-  arrows.forEach(arrow => {
-    const arrowPos = new THREE.Vector3();
-    arrow.object3D.getWorldPosition(arrowPos);
-    const distance = cameraPos.distanceTo(arrowPos);
-
-    if(distance < 1.0) {
-      const mesh = arrow.getObject3D('mesh');
-      if(mesh && mesh.material) {
-        mesh.material.transparent = true;
-        mesh.material.opacity = Math.max(0, mesh.material.opacity - 0.02);
-        if(mesh.material.opacity <= 0) arrow.remove();
+      const next = route[index + 1];
+      if (next) {
+        document.getElementById(next.id).setAttribute("visible", true);
+      } else {
+        document.getElementById("status").textContent =
+          "🎉 Destination reached!";
       }
-    }
+    });
+
+    scene.appendChild(marker);
   });
-
-  requestAnimationFrame(updateArrowFade);
 }
-updateArrowFade();
 
-// ------------------- MARKER EVENTS -------------------
-const marker = document.querySelector('#floorMarker');
-marker.addEventListener('markerFound', ()=>document.getElementById('floorText').setAttribute('visible',true));
-marker.addEventListener('markerLost', ()=>document.getElementById('floorText').setAttribute('visible',false));
-
-// ------------------- SHOW START TEXT -------------------
-function showStartText(floor) {
-  const text = document.getElementById("floorText");
-  text.setAttribute('value', `📍 You are on Floor ${floor}\nStart here`);
-  text.setAttribute('visible', true);
+// -------------------- CLEAR OLD MARKERS --------------------
+function clearMarkers() {
+  document.querySelectorAll("a-marker").forEach(m => m.remove());
 }
 </script>
 
