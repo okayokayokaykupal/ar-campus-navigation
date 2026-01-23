@@ -5,7 +5,7 @@
 <title>Campus AR Navigator</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- A-Frame + AR.js from CDN -->
+<!-- A-Frame + AR.js -->
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.min.js"></script>
 
@@ -61,14 +61,26 @@ button {
 
 <!-- AR SCENE -->
 <a-scene
-  embedded
-  arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
+  arjs="trackingMethod: best; sourceType: webcam; facingMode: environment;"
+  renderer="alpha: true"
   vr-mode-ui="enabled: false"
-  renderer="logarithmicDepthBuffer: true; precision: medium;"
-  device-orientation-permission-ui="enabled: true">
+  device-orientation-permission-ui="enabled: true"
+  renderer="antialias: true; precision: high"
+  vr-mode-ui="enabled: false"
+  trackingMethod: best;
+>
 
   <!-- CAMERA -->
-  <a-entity camera look-controls="enabled: false" arjs-camera></a-entity>
+  <a-entity camera look-controls></a-entity>
+
+  <a-cone
+  position="0 0.2 0"
+  rotation="-90 0 0"
+  height="0.3"
+  radius-bottom="0.15"
+  color="yellow"
+  scale="0.4 0.4 0.4">
+</a-cone>
 
 </a-scene>
 
@@ -136,69 +148,49 @@ function startNavigation() {
 function loadRoute(key) {
   const scene = document.querySelector("a-scene");
   const route = routes[key];
-  if (!route) return alert("No route defined for this room");
+  if (!route) return alert("No route defined");
 
   route.forEach((step, index) => {
     const marker = document.createElement("a-marker");
     marker.setAttribute("type", "pattern");
     marker.setAttribute("url", step.patt);
     marker.setAttribute("id", step.id);
-    marker.setAttribute("registerevents", "");
 
-    // Arrow or cone pointing direction
-    const cone = document.createElement("a-cone");
-    cone.setAttribute("position", "0 0.2 0");
-    cone.setAttribute("rotation", "-90 0 0");
-    cone.setAttribute("height", "0.3");
-    cone.setAttribute("radius-bottom", "0.15");
-    cone.setAttribute("color", "yellow");
-    cone.setAttribute("scale", "0.4 0.4 0.4");
-
-    // Text instruction
     const text = document.createElement("a-text");
     text.setAttribute("value", step.text);
     text.setAttribute("color", "#ffff00");
     text.setAttribute("align", "center");
-    text.setAttribute("position", "0 0.5 0");
-    text.setAttribute("scale", "0.4 0.4 0.4");
-    text.setAttribute("width", "2");
+    text.setAttribute("position", "0 0.4 0");
+    text.setAttribute("scale", "0.25 0.25 0.25");
 
-    marker.appendChild(cone);
     marker.appendChild(text);
 
-    // Hide markers after the first one initially
-    if (index !== 0) {
-      cone.setAttribute("visible", false);
-      text.setAttribute("visible", false);
-    }
+    // hide text initially EXCEPT first marker
+    if (index !== 0) text.setAttribute("visible", false);
 
     marker.addEventListener("markerFound", () => {
       console.log("FOUND:", step.id);
 
-      // Hide current marker's content
-      cone.setAttribute("visible", false);
+      // hide current text
       text.setAttribute("visible", false);
 
-      // Show next marker's content
+      // show next marker's text
       const next = route[index + 1];
       if (next) {
         const nextMarker = document.getElementById(next.id);
         if (nextMarker) {
-          const nextCone = nextMarker.querySelector("a-cone");
-          const nextText = nextMarker.querySelector("a-text");
-          if (nextCone) nextCone.setAttribute("visible", true);
-          if (nextText) nextText.setAttribute("visible", true);
+          nextMarker.children[0].setAttribute("visible", true);
         }
       } else {
-        document.getElementById("status").textContent = "🎉 Destination reached!";
+        document.getElementById("status").textContent =
+          "🎉 Destination reached!";
       }
     });
 
     scene.appendChild(marker);
   });
-
-  console.log(`Loaded ${route.length} markers for route: ${key}`);
 }
+
 
 // -------------------- CLEAR OLD MARKERS --------------------
 function clearMarkers() {
