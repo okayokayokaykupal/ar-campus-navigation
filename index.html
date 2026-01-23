@@ -14,15 +14,24 @@
 html, body {
   margin: 0;
   padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
   font-family: Arial, sans-serif;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+}
+
+#arCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
 }
 
 #ui {
-  position: absolute;
-  bottom: 0;
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
   transform: translateX(-50%);
   background: rgba(0,0,0,0.85);
   padding: 15px;
@@ -31,19 +40,15 @@ html, body {
   width: 90%;
   max-width: 400px;
   z-index: 10;
-  pointer-events: auto;
-  touch-action: auto;
 }
 
 select, button {
   width: 100%;
-  padding: 12px;
+  padding: 10px;
   margin-top: 8px;
   border-radius: 8px;
   border: none;
   font-size: 16px;
-  -webkit-appearance: none;
-  appearance: none;
 }
 
 button {
@@ -59,19 +64,20 @@ button:hover {
 #status {
   text-align: center;
   margin-bottom: 8px;
-  font-size: 30px;
+  font-size: 14px;
 }
 
 .instruction-text {
   position: absolute;
-  top: 0;
+  top: 20px;
+  left: 50%;
   transform: translateX(-50%);
   background: rgba(255, 255, 0, 0.9);
   color: black;
   padding: 15px 20px;
   border-radius: 8px;
   font-weight: bold;
-  font-size: 30px;
+  font-size: 18px;
   z-index: 5;
   display: none;
   text-align: center;
@@ -254,7 +260,7 @@ function loadRoute(key) {
     });
     
     // Create 3D arrow or cube indicator
-    const geometry = new THREE.ConeGeometry(0, 0.05, 0);
+    const geometry = new THREE.ConeGeometry(0.3, 0.6, 8);
     const material = new THREE.MeshBasicMaterial({ 
       color: index === 0 ? 0x00ff00 : 0xffff00,
       transparent: true,
@@ -323,4 +329,3 @@ function clearMarkers() {
 
 </body>
 </html>
-
