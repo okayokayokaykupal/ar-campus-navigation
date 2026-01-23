@@ -6,8 +6,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <!-- A-Frame + AR.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.3.0/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.3/aframe/build/aframe-ar.min.js"></script>
+<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+
 
 <style>
 body {
@@ -58,38 +59,24 @@ button {
 
 <!-- AR SCENE -->
 <a-scene
-    embedded
-    arjs="sourceType: webcam; debugUIEnabled: false;"
-    renderer="alpha: true"
-    vr-mode-ui="enabled: false">
+  embedded
+  arjs="trackingMethod: best; sourceType: webcam;"
+  renderer="alpha: true"
+  vr-mode-ui="enabled: false"
+  device-orientation-permission-ui="enabled: true">
 
-    <a-camera></a-camera>
+  <a-entity camera></a-entity>
 
-    <!-- START FLOOR TEXT -->
-    <a-text
-        id="startText"
-        value=""
-        position="0 2 -2"
-        align="center"
-        color="#00ff88"
-        width="4"
-        visible="false"
-        animation="property: position; to: 0 2.2 -2; dir: alternate; dur: 1000; loop: true">
-    </a-text>
-
-    <!-- NAVIGATION ARROW -->
-    <a-cone
-        id="navArrow"
-        position="0 1.5 -2"
-        rotation="0 0 0"
-        radius-bottom="0.2"
-        height="0.4"
-        color="#ffff00"
-        visible="false"
-        animation="property: rotation; to: 0 360 0; dur: 3000; loop: true">
-    </a-cone>
+  <a-text
+    value="You're on Floor 1\nSelect your destination"
+    position="0 0 -1.2"
+    align="center"
+    color="#00ff88"
+    width="4">
+  </a-text>
 
 </a-scene>
+
 
 <!-- UI -->
 <div id="ui">
