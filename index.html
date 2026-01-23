@@ -192,7 +192,23 @@ function initAR() {
   // Start animation loop
   animate();
 }
-  
+
+function onResize() {
+  arToolkitSource.onResizeElement();
+  arToolkitSource.copyElementSizeTo(renderer.domElement);
+  if (arToolkitContext.arController !== null) {
+    arToolkitSource.copyElementSizeTo(arToolkitContext.arController.canvas);
+  }
+}
+
+function onResize() {
+  arToolkitSource.onResizeElement();
+  arToolkitSource.copyElementSizeTo(renderer.domElement);
+  if (arToolkitContext.arController !== null) {
+    arToolkitSource.copyElementSizeTo(arToolkitContext.arController.canvas);
+  }
+}
+
 function animate() {
   requestAnimationFrame(animate);
   
@@ -327,4 +343,5 @@ function clearMarkers() {
 
 </body>
 </html>
+
 
