@@ -471,27 +471,53 @@
                 
                 html5QrCode = new Html5Qrcode("reader");
                 
+				const reader = document.getElementById("reader");
+				reader.style.visibility = "hidden";
+
+				setTimeout(async () => {
+				await forceBackCamera();
+				reader.style.visibility = "visible";
+				}, 400);
+
                 const config = {
-					fps: 10,
-					aspectRatio: window.innerWidth / window.innerHeight,
-					disableFlip: false,
-                    formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ]
-                };
-                
-                // Start scanning - this will ask for camera permission
-await html5QrCode.start(
-  { facingMode: "environment" }, // ✅ ONLY ONE KEY
-  {
-    fps: 10,
-    disableFlip: false,
-    videoConstraints: {
-      width: { ideal: 1920 },
-      height: { ideal: 1080 }
-    }
-  },
-  (decodedText) => handleQRCode(decodedText),
-  () => {}
-);
+				fps: 10,
+				disableFlip: false,
+				videoConstraints: {
+				width: { ideal: 1920 },
+				height: { ideal: 1080 }
+			  }
+							};
+							
+							// Start scanning - this will ask for camera permission
+				await html5QrCode.start(
+				{ facingMode: "environment" },
+				config,
+				(decodedText) => handleQRCode(decodedText),
+				  () => {}
+				);
+
+				// Force back camera after permission
+				setTimeout(forceBackCamera, 400);
+
+				async function forceBackCamera() {
+				  const devices = await Html5Qrcode.getCameras();
+
+				  const backCam = devices.find(d =>
+					d.label.toLowerCase().includes("back") ||
+					d.label.toLowerCase().includes("rear")
+				  );
+
+				  if (!backCam) return;
+
+				  await html5QrCode.stop();
+
+				  await html5QrCode.start(
+					backCam.id,
+					config, // 👈 SAME CONFIG (keeps quality)
+					(decodedText) => handleQRCode(decodedText),
+					() => {}
+				  );
+				}
 
 
                 
