@@ -201,14 +201,6 @@ function onResize() {
   }
 }
 
-function onResize() {
-  arToolkitSource.onResizeElement();
-  arToolkitSource.copyElementSizeTo(renderer.domElement);
-  if (arToolkitContext.arController !== null) {
-    arToolkitSource.copyElementSizeTo(arToolkitContext.arController.canvas);
-  }
-}
-
 function animate() {
   requestAnimationFrame(animate);
   
@@ -276,14 +268,14 @@ function loadRoute(key) {
     scene.visible: false;
     // Create 3D arrow or cube indicator
     const geometry = new THREE.ConeGeometry(0.3, 0.6, 8);
-    const material = new THREE.MeshBasicMaterial({ 
+    const material = new THREE.MeshNormalMaterial({ 
       color: index === 0 ? 0x00ff00 : 0xffff00,
       transparent: true,
       opacity: 0.8
     });
     const cone = new THREE.Mesh(geometry, material);
     cone.position.y = geometry.parameters.height / 2;
-    scene.add(cone);
+    markerRoot.add(cone);
     
     // Add pulsing animation
     let scale = 1;
@@ -343,5 +335,6 @@ function clearMarkers() {
 
 </body>
 </html>
+
 
 
