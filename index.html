@@ -14,11 +14,34 @@ body {
     margin: 0;
     font-family: Arial, sans-serif;
     overflow: hidden;
+    align-items: center;
+    display: flex;
+    justify-content: center;
 }
 
-html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+body, html {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
 
-a-scene { width: 100vw; height: 100vh; display: block; }
+.container {
+  width: 80vw;   /* width you want */
+  height: 90vh;  /* height you want */
+  position: relative;
+  border: 1px solid black;
+}
+
+a-scene {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
 
 /* UI PANEL */
 #ui {
@@ -56,27 +79,27 @@ button { background: #00ff88; font-weight: bold; cursor: pointer; }
 <body>
 
 <!-- AR SCENE -->
-<a-scene
-  embedded
-  arjs="trackingMethod: best; sourceType: webcam; facingMode: environment;"
-  renderer="alpha: true; physicallyCorrectLights: true"
-  vr-mode-ui="enabled: false"
-  device-orientation-permission-ui="enabled: true">
+<div class="container">
+  <a-scene
+    embedded
+    arjs="trackingMethod: best; sourceType: webcam; facingMode: environment;"
+    renderer="alpha: true; physicallyCorrectLights: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: true"
+  >
+    <a-entity id="camera" camera look-controls near="0.1" far="100"></a-entity>
+    <a-marker type="barcode" value="1" id="floorMarker">
+      <a-text id="floorText"
+              value="You're on Floor 1\nSelect your destination"
+              position="0 0 0"
+              color="#00ff88"
+              scale="1 1 1">
+      </a-text>
+    </a-marker>
+  </a-scene>
+</div>
 
-  <!-- Camera -->
-  <a-entity id="camera" camera look-controls near="0.1" far="1000"></a-entity>
 
-  <!-- Marker -->
-  <a-marker type="barcode" value="1" id="floorMarker">
-    <a-text
-      id="floorText"
-      value="You're on Floor 1\nSelect your destination"
-      position="0 0 0"
-      color="#00ff88"
-      scale="1 1 1">
-    </a-text>
-  </a-marker>
-</a-scene>
 
 <!-- UI -->
 <div id="ui">
