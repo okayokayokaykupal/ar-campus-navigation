@@ -2,9 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-	<meta name="viewport"
-      content="width=device-width, height=device-height,
-      initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AR Campus Navigation</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.3.0/aframe.min.js"></script>
@@ -85,12 +83,6 @@
             width: 100%;
             height: 100%;
         }
-		
-		#reader video {
-		    width: 100%;
-            height: 100%;
-			object-fit: cover;
-		}
 
         .qr-overlay {
             position: absolute;
@@ -468,19 +460,17 @@
                 };
                 
                 // Start scanning - this will ask for camera permission
-await html5QrCode.start(
-  { facingMode: "environment" },  // ONLY 1 key here
-  {
-    fps: 10,
-    qrbox: { width: 250, height: 250 }
-  },
-  (decodedText) => {
-    console.log("QR detected:", decodedText);
-    handleQRCode(decodedText);
-  },
-  () => {}
-);
-
+                await html5QrCode.start(
+                    { facingMode: "environment" },
+                    config,
+                    (decodedText, decodedResult) => {
+                        console.log('✅ QR Code detected:', decodedText);
+                        handleQRCode(decodedText);
+                    },
+                    (errorMessage) => {
+                        // Ignore "not found" errors - they're normal
+                    }
+                );
                 
                 isScanning = true;
                 console.log('✅ Scanner started successfully!');
@@ -513,25 +503,24 @@ await html5QrCode.start(
 
         // Handle detected QR code
         function handleQRCode(data) {
-    const floorMatch = data.match(/FLOOR_(\d)/);
-    if (floorMatch) {
-        const floor = floorMatch[1];
-        if (floor >= '1' && floor <= '5') {
-            document.getElementById('qrStatus').textContent = `✓ Floor ${floor} Detected!`;
-            document.getElementById('qrStatus').classList.add('qr-detected');
-
-            // ✅ FIXED: fully release camera
-            if (html5QrCode && isScanning) {
-                html5QrCode.stop().then(() => {
-                    html5QrCode.clear();   // 🔥 releases camera
-                    html5QrCode = null;
-                    isScanning = false;
-                    setTimeout(() => detectFloor(floor), 500);
-                });
+            const floorMatch = data.match(/FLOOR_(\d)/);
+            if (floorMatch) {
+                const floor = floorMatch[1];
+                if (floor >= '1' && floor <= '5') {
+                    document.getElementById('qrStatus').textContent = `✓ Floor ${floor} Detected!`;
+                    document.getElementById('qrStatus').classList.add('qr-detected');
+                    
+                    // Stop scanner
+                    if (html5QrCode && isScanning) {
+                        html5QrCode.stop().then(() => {
+                            isScanning = false;
+                            setTimeout(() => detectFloor(floor), 1000);
+                        });
+                    }
+                }
             }
         }
-    }
-}
+
         // Floor detected
         function detectFloor(floor) {
             state.currentFloor = floor;
@@ -570,7 +559,16 @@ await html5QrCode.start(
             switchScreen('arScreen');
             
             // Request camera permission for AR
-  
+            try {
+                await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                console.log('✅ AR Camera permission granted');
+            } catch (err) {
+                console.error('AR camera error:', err);
+                alert('Camera access needed for AR navigation');
+                switchScreen('destScreen');
+                return;
+            }
+            
             updateDistance();
         }
 
@@ -596,24 +594,9 @@ await html5QrCode.start(
             document.getElementById('roomDesc').textContent = state.selectedRoom.desc;
             document.getElementById('roomInfo').classList.add('active');
         }
-		
- function stopARCamera() {
-    const scene = document.querySelector("a-scene");
-    if (!scene) return;
-
-    scene.pause();
-
-    // 🔥 Force stop AR.js video stream
-    const video = scene.querySelector("video");
-    if (video && video.srcObject) {
-        video.srcObject.getTracks().forEach(track => track.stop());
-        video.srcObject = null;
-    }
-}
 
         // Close room info
         function closeRoomInfo() {
-		    stopARCamera();
             document.getElementById('roomInfo').classList.remove('active');
             document.getElementById('arrowIndicator').style.display = 'block';
             switchScreen('homeScreen');
