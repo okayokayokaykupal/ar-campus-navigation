@@ -73,6 +73,10 @@ button.secondary {
   border-radius: 6px;
 }
 
+a-scene {
+  width: 100vw; /* Ensure full viewport width */
+  height: 100vh; /* Ensure full viewport height */
+}
 </style>
 </head>
 
@@ -177,7 +181,6 @@ function addDebug(msg, type = 'info') {
   const colors = { info: '#ffaa00', success: '#00ff88', error: '#ff4444' };
   debug.innerHTML += `<div style="color: ${colors[type]}">[${time}] ${msg}</div>`;
   debug.scrollTop = debug.scrollHeight;
-  console.log(msg);
 }
 
 // -------------------- START NAV --------------------
