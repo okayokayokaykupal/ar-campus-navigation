@@ -69,15 +69,36 @@ button:hover {
   background: #00dd77;
 }
 
+button.stop {
+  background: #ff4444;
+}
+
+button.stop:hover {
+  background: #dd3333;
+}
+
 #status {
   text-align: center;
   margin-bottom: 8px;
   font-size: 30px;
 }
 
-.instruction-text {
+#floorIndicator {
   position: fixed;
   top: 20px;
+  left: 20px;
+  background: rgba(0, 123, 255, 0.9);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 18px;
+  z-index: 5;
+}
+
+.instruction-text {
+  position: fixed;
+  top: 80px;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(255, 255, 0, 0.9);
@@ -91,23 +112,90 @@ button:hover {
   text-align: center;
   max-width: 80%;
 }
+
+.room-description {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.95);
+  color: white;
+  padding: 30px;
+  border-radius: 15px;
+  z-index: 100;
+  display: none;
+  max-width: 80%;
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+}
+
+.room-description h2 {
+  margin-top: 0;
+  color: #00ff88;
+}
+
+.room-description button {
+  margin-top: 15px;
+  background: #00ff88;
+}
 </style>
 </head>
 
 <body>
 
+<!-- Floor Indicator -->
+<div id="floorIndicator">Floor: Not Set</div>
+
 <!-- Instruction overlay -->
 <div id="instructionOverlay" class="instruction-text"></div>
+
+<!-- Room Description Modal -->
+<div id="roomDescription" class="room-description">
+  <h2 id="roomTitle"></h2>
+  <p id="roomDetails"></p>
+  <button onclick="closeRoomDescription()">Continue Navigation</button>
+</div>
 
 <!-- UI -->
 <div id="ui">
   <div id="status">Select destination</div>
   <select id="roomSelect"></select>
-  <button onclick="startNavigation()">Start Navigation</button>
+  <button id="navButton" onclick="toggleNavigation()">Start Navigation</button>
 </div>
 
 <script>
-// -------------------- ROOMS --------------------
+// -------------------- GLOBAL STATE --------------------
+let currentFloor = null;
+let isNavigating = false;
+
+// -------------------- ROOM DESCRIPTIONS --------------------
+const roomDescriptions = {
+  "101": {
+    name: "Computer Laboratory 1",
+    description: "Equipped with 40 high-performance computers for programming and software development courses. Features include dual monitors and latest development tools."
+  },
+  "102": {
+    name: "Physics Laboratory",
+    description: "State-of-the-art physics lab with modern equipment for mechanics, optics, and electronics experiments. Capacity: 30 students."
+  },
+  "103": {
+    name: "Chemistry Laboratory",
+    description: "Fully equipped chemistry lab with safety features, fume hoods, and complete apparatus for organic and inorganic chemistry experiments."
+  },
+  "201": {
+    name: "Lecture Hall A",
+    description: "Large lecture hall with 150-seat capacity, projector, sound system, and smart board for multimedia presentations."
+  },
+  "202": {
+    name: "Faculty Office",
+    description: "Faculty members' offices and consultation rooms. Office hours: Monday-Friday, 8:00 AM - 5:00 PM."
+  },
+  "203": {
+    name: "Library Study Area",
+    description: "Quiet study area with individual desks, group study rooms, and access to digital resources. Open 24/7 during exam periods."
+  }
+};
+
+// -------------------- ROOMS PER FLOOR --------------------
 const rooms = {
   1: ["101","102","103"],
   2: ["201","202","203"]
@@ -119,27 +207,41 @@ const routes = {
     { id: "start1", patt: "patterns/floor1.patt", text: "📍 Start at Floor 1" },
     { id: "hall1", patt: "patterns/hallway1.patt", text: "➡ Go straight" },
     { id: "turn1", patt: "patterns/turnleft.patt", text: "↩ Turn left" },
-    { id: "room101", patt: "patterns/room101.patt", text: "✅ Room 101 reached!" }
+    { id: "room101", patt: "patterns/room101.patt", text: "✅ Room 101 reached!", room: "101" }
   ],
 
   "1-102": [
     { id: "start1b", patt: "patterns/floor1.patt", text: "📍 Start at Floor 1" },
     { id: "hall2", patt: "patterns/hallway2.patt", text: "➡ Go straight" },
-    { id: "room102", patt: "patterns/room102.patt", text: "✅ Room 102 reached!" }
+    { id: "room102", patt: "patterns/room102.patt", text: "✅ Room 102 reached!", room: "102" }
   ],
 
   "1-103": [
     { id: "start1c", patt: "patterns/floor1.patt", text: "📍 Start at Floor 1" },
     { id: "hall3", patt: "patterns/hallway1.patt", text: "➡ Go straight" },
     { id: "turn2", patt: "patterns/turnright.patt", text: "↪ Turn right" },
-    { id: "room103", patt: "patterns/room103.patt", text: "✅ Room 103 reached!" }
+    { id: "room103", patt: "patterns/room103.patt", text: "✅ Room 103 reached!", room: "103" }
   ],
 
   "2-201": [
     { id: "stairs", patt: "patterns/stairs.patt", text: "⬆ Go upstairs to Floor 2" },
     { id: "floor2start", patt: "patterns/floor2.patt", text: "📍 Floor 2 reached" },
     { id: "hall4", patt: "patterns/hallway2.patt", text: "➡ Go straight" },
-    { id: "room201", patt: "patterns/room201.patt", text: "✅ Room 201 reached!" }
+    { id: "room201", patt: "patterns/room201.patt", text: "✅ Room 201 reached!", room: "201" }
+  ],
+  
+  "2-202": [
+    { id: "stairs2", patt: "patterns/stairs.patt", text: "⬆ Go upstairs to Floor 2" },
+    { id: "floor2start2", patt: "patterns/floor2.patt", text: "📍 Floor 2 reached" },
+    { id: "turn3", patt: "patterns/turnleft.patt", text: "↩ Turn left" },
+    { id: "room202", patt: "patterns/room202.patt", text: "✅ Room 202 reached!", room: "202" }
+  ],
+  
+  "2-203": [
+    { id: "stairs3", patt: "patterns/stairs.patt", text: "⬆ Go upstairs to Floor 2" },
+    { id: "floor2start3", patt: "patterns/floor2.patt", text: "📍 Floor 2 reached" },
+    { id: "turn4", patt: "patterns/turnright.patt", text: "↪ Turn right" },
+    { id: "room203", patt: "patterns/room203.patt", text: "✅ Room 203 reached!", room: "203" }
   ]
 };
 
@@ -215,35 +317,82 @@ function animate() {
 
 // -------------------- INIT --------------------
 window.addEventListener("load", function() {
-  populateRooms();
+  checkFloorFromURL();
   initAR();
 });
 
-function populateRooms() {
+// -------------------- CHECK FLOOR FROM URL --------------------
+function checkFloorFromURL() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const floor = urlParams.get('floor');
+  
+  if (floor) {
+    currentFloor = parseInt(floor);
+    document.getElementById("floorIndicator").textContent = `Floor: ${currentFloor}`;
+    populateRooms(currentFloor);
+  } else {
+    document.getElementById("floorIndicator").textContent = "Floor: Scan QR Code";
+    document.getElementById("status").textContent = "Scan floor QR code first";
+    document.getElementById("navButton").disabled = true;
+  }
+}
+
+function populateRooms(floor) {
   const select = document.getElementById("roomSelect");
-  for (const floor in rooms) {
+  select.innerHTML = ''; // Clear existing options
+  
+  // Show ALL rooms from ALL floors
+  for (const floorNum in rooms) {
     const group = document.createElement("optgroup");
-    group.label = `Floor ${floor}`;
-    rooms[floor].forEach(room => {
+    group.label = `Floor ${floorNum}`;
+    rooms[floorNum].forEach(room => {
       const option = document.createElement("option");
-      option.value = `${floor}-${room}`;
+      option.value = `${floorNum}-${room}`;
       option.textContent = `Room ${room}`;
       group.appendChild(option);
     });
     select.appendChild(group);
   }
+  
+  document.getElementById("status").textContent = "Select destination";
+  document.getElementById("navButton").disabled = false;
 }
 
-// -------------------- START NAV --------------------
+// -------------------- TOGGLE NAVIGATION --------------------
+function toggleNavigation() {
+  if (isNavigating) {
+    stopNavigation();
+  } else {
+    startNavigation();
+  }
+}
+
 function startNavigation() {
   const roomKey = document.getElementById("roomSelect").value;
   if (!roomKey) return alert("Select a destination");
 
+  isNavigating = true;
   document.getElementById("status").textContent =
     `Navigating to Room ${roomKey.split('-')[1]}`;
+  
+  const navButton = document.getElementById("navButton");
+  navButton.textContent = "Stop Navigation";
+  navButton.classList.add("stop");
 
   clearMarkers();
   loadRoute(roomKey);
+}
+
+function stopNavigation() {
+  isNavigating = false;
+  
+  const navButton = document.getElementById("navButton");
+  navButton.textContent = "Start Navigation";
+  navButton.classList.remove("stop");
+  
+  document.getElementById("status").textContent = "Navigation stopped";
+  
+  clearMarkers();
 }
 
 // -------------------- LOAD ROUTE --------------------
@@ -275,36 +424,36 @@ function loadRoute(key) {
       opacity: 0.8
     });
     const cone = new THREE.Mesh(geometry, material);
-    cone.position.y = 0.5;
+    cone.position.set(0, 0.1, 0);
     cone.rotation.x = Math.PI; // Point down
     markerRoot.add(cone);
     
-    // Add pulsing animation
-    let scale = 1;
-    let growing = true;
-    
     markerControl.addEventListener('markerFound', function() {
-      console.log('Marker found:', step.id);
-      showInstruction(step.text);
+      console.log('Marker found:', step.id, 'Current step index:', currentStepIndex, 'This index:', index);
       
-      // If not the last step, advance to next
-      if (index < route.length - 1) {
-        setTimeout(function() {
-          currentStepIndex = index + 1;
-          // Change color of current marker to green
-          material.color.setHex(0x00ff00);
-        }, 1500);
-      } else {
-        // Last marker - destination reached
-        setTimeout(function() {
-          document.getElementById("status").textContent = "🎉 Destination reached!";
-          showInstruction("🎉 You have arrived!");
-        }, 1500);
+      // Only show instruction if this is the current step
+      if (index === currentStepIndex) {
+        showInstruction(step.text);
+        
+        // If this is the last step (destination), show room description
+        if (step.room) {
+          setTimeout(function() {
+            showRoomDescription(step.room);
+            document.getElementById("status").textContent = "🎉 Destination reached!";
+          }, 1500);
+        } else if (index < route.length - 1) {
+          // Not the last step, advance to next
+          setTimeout(function() {
+            currentStepIndex = index + 1;
+            material.color.setHex(0x00ff00);
+          }, 1500);
+        }
       }
     });
     
     markerControl.addEventListener('markerLost', function() {
       console.log('Marker lost:', step.id);
+      // Hide instruction when marker is lost
       hideInstruction();
     });
     
@@ -323,6 +472,21 @@ function hideInstruction() {
   overlay.style.display = 'none';
 }
 
+// -------------------- ROOM DESCRIPTION --------------------
+function showRoomDescription(roomNumber) {
+  const roomInfo = roomDescriptions[roomNumber];
+  if (!roomInfo) return;
+  
+  document.getElementById('roomTitle').textContent = `Room ${roomNumber}: ${roomInfo.name}`;
+  document.getElementById('roomDetails').textContent = roomInfo.description;
+  document.getElementById('roomDescription').style.display = 'block';
+}
+
+function closeRoomDescription() {
+  document.getElementById('roomDescription').style.display = 'none';
+  stopNavigation();
+}
+
 // -------------------- CLEAR OLD MARKERS --------------------
 function clearMarkers() {
   markerControls.forEach(mc => {
@@ -337,7 +501,3 @@ function clearMarkers() {
 
 </body>
 </html>
-
-
-
-
