@@ -1,308 +1,73 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
-<meta charset="UTF-8">
-<title>Campus AR Navigator</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  <title>Hello WebXR!</title>
 
-<!-- A-Frame + AR.js -->
-<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.min.js"></script>
+  <!-- three.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.180.0/three.tsl.js" integrity="sha512-pVsOWriwN/5X/FWYhtqqQLnD+3cm8W1YqGrNrfkKgp+GMykFl7fZ0vorWpckUlZOVIG1tNVnI3D7T8DSea5TQg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ar.js/2.2.2/aframe-ar.min.js" integrity="sha512-Vwmkm1QOtdVNLuwkxaXXyB/aBY0lZvI4NTv+83gs+pU0HuZ2j3inyfgpMpJHYRS0O3PoHEhO6mKomMYBKXRMWw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-<style>
-html, body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  font-family: Arial, sans-serif;
-}
-
-#ui {
-  position: fixed;
-  bottom: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0,0,0,0.85);
-  padding: 12px;
-  border-radius: 12px;
-  color: white;
-  width: 90%;
-  max-width: 400px;
-  max-height: 70vh;
-  overflow-y: auto;
-  z-index: 9999;
-}
-
-select, button {
-  width: 100%;
-  padding: 8px;
-  margin-top: 6px;
-  border-radius: 8px;
-  border: none;
-  font-size: 14px;
-}
-
-button {
-  background: #00ff88;
-  font-weight: bold;
-  cursor: pointer;
-  color: black;
-}
-
-button.secondary {
-  background: #ff6600;
-}
-
-#status {
-  text-align: center;
-  margin-bottom: 6px;
-  font-size: 13px;
-  font-weight: bold;
-}
-
-#debug {
-  font-size: 10px;
-  color: #ffaa00;
-  margin-top: 8px;
-  max-height: 60px;
-  overflow-y: auto;
-  background: rgba(255,255,255,0.1);
-  padding: 6px;
-  border-radius: 6px;
-}
-
-a-scene {
-  width: 100vw; /* Ensure full viewport width */
-  height: 100vh; /* Ensure full viewport height */
-}
-</style>
 </head>
-
 <body>
 
-<!-- AR SCENE -->
-<a-scene
-  embedded
-  arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
-  vr-mode-ui="enabled: false"
-  renderer="logarithmicDepthBuffer: true; precision: medium; alpha: true;">
-
-  <!-- CAMERA - NO look-controls for AR -->
-  <a-entity camera></a-entity>
-
-</a-scene>
-
-<!-- UI -->
-<div id="ui">
-  <div id="status">Select destination</div>
-  <select id="roomSelect"></select>
-  <button onclick="startNavigation()">Start Navigation</button>
-  <button class="secondary" onclick="window.open('https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/hiro.png', '_blank')">
-    📥 Download HIRO Marker (for TEST)
-  </button>
-  <div id="debug">Ready. Select a destination...</div>
-</div>
-
 <script>
-// -------------------- ROOMS --------------------
-const rooms = {
-  0: ["TEST"],  // Test with HIRO marker
-  1: ["101","102","103"],
-  2: ["201","202","203"]
-};
+import * as THREE from 'three';
 
-// -------------------- ROUTES (MARKER-BASED) --------------------
-const routes = {
-  // TEST ROUTE - Uses HIRO marker
-  "0-TEST": [
-    { id: "test1", preset: "hiro", text: "📍 Step 1: HIRO Test" },
-    { id: "test2", preset: "hiro", text: "✅ Navigation Works!" }
-  ],
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+scene.add(camera)
+const renderer = new THREE.WebGLRenderer({
+  antialias: true, 
+  alpha: true
+});
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setAnimationLoop( animate );
+document.body.appendChild( renderer.domElement );
 
-  // CUSTOM PATTERN ROUTES
-  "1-101": [
-    { id: "start1", patt: "patterns/floor1.patt", text: "📍 Start at Floor 1" },
-    { id: "hall1", patt: "patterns/hallway1.patt", text: "➡ Go straight" },
-    { id: "turn1", patt: "patterns/turnleft.patt", text: "↩ Turn left" },
-    { id: "room101", patt: "patterns/room101.patt", text: "✅ Room 101 reached!" }
-  ],
+var ArToolkitSource = new THREEx.ArToolkitSource({
+  sourceType: "webcam"
+});
 
-  "1-102": [
-    { id: "start1b", patt: "patterns/floor1.patt", text: "📍 Start at Floor 1" },
-    { id: "hall2", patt: "patterns/hallway2.patt", text: "➡ Go straight" },
-    { id: "room102", patt: "patterns/room102.patt", text: "✅ Room 102 reached!" }
-  ],
+ArToolkitSource.init(function(){
+  setTimeout(function(){
+    ArToolkitSource.onResizeElemet();
+    ArToolkitSource.copyElementSizeTo(renderer.domElement);
+  },2000)
+});
 
-  "1-103": [
-    { id: "start1c", patt: "patterns/floor1.patt", text: "📍 Start at Floor 1" },
-    { id: "room103", patt: "patterns/room103.patt", text: "✅ Room 103 reached!" }
-  ],
+var ArToolkitContext = new THREEx. ArToolkitContext({
+    cameraParametersUrl: 'camera_para.dat',
+    detectionMode: 'color_and_matrix'
+});
 
-  "2-201": [
-    { id: "start2", patt: "patterns/floor2.patt", text: "📍 Start at Floor 2" },
-    { id: "room201", patt: "patterns/room201.patt", text: "✅ Room 201 reached!" }
-  ],
+ArToolkitContext.init(function(){
+  camera.projectionMatrix.copy(ArToolkitContext.getProjectionMatrix());
+});
 
-  "2-202": [
-    { id: "start2b", patt: "patterns/floor2.patt", text: "📍 Start at Floor 2" },
-    { id: "room202", patt: "patterns/room202.patt", text: "✅ Room 202 reached!" }
-  ],
+var ArMarkerControls = new THREEx.ArMarkerControls(ArToolkitContext, camera{
+  type: 'pattern',
+  patternUrl:'patterns/hallway1.patt',
+  changeMatrixMode:'cameraTransforMatrix'
+});
+scene.visible = false;
 
-  "2-203": [
-    { id: "start2c", patt: "patterns/floor2.patt", text: "📍 Start at Floor 2" },
-    { id: "room203", patt: "patterns/room203.patt", text: "✅ Room 203 reached!" }
-  ]
-};
+const geometry = new THREE.CubeGeometry( 1, 1, 1 );
+const material = new THREE.MeshNormalMaterial( { transparent: true, opacity: 0.5, side: THREE.Doubleside} );
+const cube = new THREE.Mesh( geometry, material );
+cube.position.y = geometry.parameters.height / 2;
+scene.add( cube );
 
-// -------------------- INIT --------------------
-window.addEventListener("load", populateRooms);
+camera.position.z = 5;
 
-function populateRooms() {
-  const select = document.getElementById("roomSelect");
-  for (const floor in rooms) {
-    const group = document.createElement("optgroup");
-    group.label = floor === "0" ? "TEST" : `Floor ${floor}`;
-    rooms[floor].forEach(room => {
-      const option = document.createElement("option");
-      option.value = `${floor}-${room}`;
-      option.textContent = room === "TEST" ? "Room TEST (HIRO)" : `Room ${room}`;
-      group.appendChild(option);
-    });
-    select.appendChild(group);
-  }
-}
+function animate() {
 
-// -------------------- DEBUG --------------------
-function addDebug(msg, type = 'info') {
-  const debug = document.getElementById("debug");
-  const time = new Date().toLocaleTimeString();
-  const colors = { info: '#ffaa00', success: '#00ff88', error: '#ff4444' };
-  debug.innerHTML += `<div style="color: ${colors[type]}">[${time}] ${msg}</div>`;
-  debug.scrollTop = debug.scrollHeight;
-}
+  requestAnimationFrame ( animate );
+  ArToolkitContext.uodate(ArToolkitSource.domElement);
+  scene.visible = camera.visible;
+  renderer.render( scene, camera );
 
-// -------------------- START NAV --------------------
-function startNavigation() {
-  const roomKey = document.getElementById("roomSelect").value;
-  if (!roomKey) return alert("Select a destination");
-
-  const roomName = roomKey.split('-')[1];
-  document.getElementById("status").textContent = `Navigating to ${roomName}`;
-  
-  document.getElementById("debug").innerHTML = "";
-  addDebug("🚀 Starting navigation...", "info");
-  
-  clearMarkers();
-  loadRoute(roomKey);
-}
-
-// -------------------- LOAD ROUTE --------------------
-function loadRoute(key) {
-  const scene = document.querySelector("a-scene");
-  const route = routes[key];
-  
-  if (!route) {
-    addDebug("❌ No route defined for " + key, "error");
-    return alert("No route defined");
-  }
-
-  addDebug(`📍 Loading ${route.length} waypoints...`, "info");
-
-  route.forEach((step, index) => {
-    const marker = document.createElement("a-marker");
-    
-    // Use preset (HIRO) or custom pattern
-    if (step.preset) {
-      marker.setAttribute("preset", step.preset);
-      marker.setAttribute("id", step.id);
-      addDebug(`✅ Using built-in: ${step.preset}`, "success");
-    } else if (step.patt) {
-      marker.setAttribute("type", "pattern");
-      marker.setAttribute("url", step.patt);
-      marker.setAttribute("id", step.id);
-      
-      // Check if pattern file exists
-      fetch(step.patt)
-        .then(res => {
-          if (res.ok) {
-            addDebug(`✅ Pattern loaded: ${step.patt}`, "success");
-          } else {
-            addDebug(`❌ Pattern NOT found: ${step.patt}`, "error");
-          }
-        })
-        .catch(() => {
-          addDebug(`❌ Error loading: ${step.patt}`, "error");
-        });
-    }
-
-    // Create GREEN CONE ARROW
-    const arrow = document.createElement("a-cone");
-    arrow.setAttribute("position", "0 0.5 0");
-    arrow.setAttribute("rotation", "-90 0 0");
-    arrow.setAttribute("height", "0.5");
-    arrow.setAttribute("radius-bottom", "0.2");
-    arrow.setAttribute("color", "#00ff88");
-    arrow.setAttribute("material", "opacity: 1");
-
-    // Create YELLOW TEXT
-    const text = document.createElement("a-text");
-    text.setAttribute("value", step.text);
-    text.setAttribute("color", "#ffff00");
-    text.setAttribute("align", "center");
-    text.setAttribute("position", "0 1 0");
-    text.setAttribute("scale", "0.5 0.5 0.5");
-
-    // Attach to marker
-    marker.appendChild(arrow);
-    marker.appendChild(text);
-
-    // Hide all except first marker
-    if (index !== 0) {
-      arrow.setAttribute("visible", false);
-      text.setAttribute("visible", false);
-    }
-
-    // When marker is found
-    marker.addEventListener("markerFound", () => {
-      addDebug(`🎯 Marker detected: ${step.id}`, "success");
-
-      // Hide current marker's content
-      arrow.setAttribute("visible", false);
-      text.setAttribute("visible", false);
-
-      // Show next marker's content
-      const next = route[index + 1];
-      if (next) {
-        const nextMarker = document.getElementById(next.id);
-        if (nextMarker && nextMarker.children.length >= 2) {
-          nextMarker.children[0].setAttribute("visible", true); // arrow
-          nextMarker.children[1].setAttribute("visible", true); // text
-          addDebug(`➡️ Next: ${next.text}`, "info");
-        }
-      } else {
-        document.getElementById("status").textContent = "🎉 Destination reached!";
-        addDebug("✅ You have arrived!", "success");
-      }
-    });
-
-    // When marker is lost
-    marker.addEventListener("markerLost", () => {
-      addDebug(`👁️ Lost: ${step.id}`, "info");
-    });
-
-    scene.appendChild(marker);
-  });
-
-  addDebug("📸 Point camera at first marker", "info");
-}
-
-// -------------------- CLEAR OLD MARKERS --------------------
-function clearMarkers() {
-  document.querySelectorAll("a-marker").forEach(m => m.remove());
 }
 </script>
-
-</body>
-</html>
