@@ -138,14 +138,14 @@ let markerControls = [];
 
 function initAR() {
   // Scene
-  const scene = new THREE.Scene();
+  scene = new THREE.Scene();
   
   // Camera
-  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
   scene.add(camera);
   
   // Renderer
-  const renderer = new THREE.WebGLRenderer({
+  renderer = new THREE.WebGLRenderer({
     antialias: true,
     alpha: true
   });
@@ -154,7 +154,7 @@ function initAR() {
   document.body.appendChild(renderer.domElement);
   
   // AR Toolkit Source (webcam)
-  var arToolkitSource = new THREEx.ArToolkitSource({
+  arToolkitSource = new THREEx.ArToolkitSource({
     sourceType: "webcam"
   });
   
@@ -165,8 +165,8 @@ function initAR() {
   });
   
   // AR Toolkit Context
-  var arToolkitContext = new THREEx.ArToolkitContext({
-    cameraParametersUrl: 'camera_para.dat',
+  arToolkitContext = new THREEx.ArToolkitContext({
+    cameraParametersUrl: 'https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/data/data/camera_para.dat',
     detectionMode: 'mono'
   });
   
