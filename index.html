@@ -9,20 +9,14 @@
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
-
 <style>
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    overflow: hidden;
-}
-
-html, body {
+body, html {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
+  font-family: Arial, sans-serif;
 }
 
 a-scene {
@@ -66,29 +60,6 @@ button {
     margin-bottom: 8px;
     font-size: 14px;
 }
-
-/* Mobile text scaling */
-@media (max-width: 768px) {
-  a-text {
-    transform: scale(1 1 1); /* default smaller scale */
-  }
-
-  a-cone {
-    transform: scale(0.8 0.8 0.8);
-  }
-}
-
-/* Desktop scaling */
-@media (min-width: 769px) {
-  a-text {
-    transform: scale(1.5 1.5 1.5);
-  }
-
-  a-cone {
-    transform: scale(1 1 1);
-  }
-}
-
 </style>
 </head>
 
@@ -105,27 +76,16 @@ button {
   <!-- Camera -->
   <a-entity id="camera" camera look-controls near="0.1" far="1000"></a-entity>
 
-  <!-- Floating text in front of camera -->
-<a-marker type="barcode" value="1" id="floorMarker">
-  <a-text
-    id="floorText"
-    value="You're on Floor 1\nSelect your destination"
-    position="0 0 0"
-    color="#00ff88"
-    scale="1 1 1">
-  </a-text>
-</a-marker>
-
-  <!-- Navigation arrow -->
-  <a-cone id="navArrow"
-          position="0 0 -3"
-          rotation="0 0 0"
-          radius-bottom="0.2"
-          height="0.5"
-          color="#ffff00"
-          visible="false"
-          animation="property: rotation; to: 0 360 0; dur: 3000; loop: true">
-  </a-cone>
+  <!-- Marker for floor -->
+  <a-marker type="barcode" value="1" id="floorMarker">
+    <a-text
+      id="floorText"
+      value="You're on Floor 1\nSelect your destination"
+      position="0 0 0"
+      color="#00ff88"
+      scale="1 1 1">
+    </a-text>
+  </a-marker>
 
 </a-scene>
 
@@ -137,8 +97,7 @@ button {
 </div>
 
 <script>
-
-
+// Rooms data
 const rooms = {
     1: ["101","102","103","104","105"],
     2: ["201","202","203","204","205"],
@@ -152,33 +111,15 @@ const state = {
     destination: null
 };
 
-// =======================
-// INIT FROM QR (URL)
-// =======================
-window.addEventListener("load", () => {
-const camera = document.querySelector('#camera').getAttribute('camera');
-if (window.innerWidth < 768) {
-  // Mobile FOV
-  document.querySelector('#camera').setAttribute('camera', 'fov', 90);
-} else {
-  // Desktop FOV
-  document.querySelector('#camera').setAttribute('camera', 'fov', 75);
-}
-    const params = new URLSearchParams(window.location.search);
-    const floor = params.get("floor");
+// Arrow paths for each room (x, y, z)
+const arrowPaths = {
+  "1-101": [{x:0, y:0, z:-1},{x:0, y:0, z:-2}],
+  "1-102": [{x:0.5, y:0, z:-1},{x:0.5, y:0, z:-2}],
+  "5-501": [{x:0, y:0, z:-1},{x:0.5, y:0, z:-2},{x:1, y:0, z:-3},{x:1.5, y:0, z:-4},{x:2, y:0, z:-5}]
+};
 
-    if (floor && rooms[floor]) {
-        state.currentFloor = floor;
-        showStartText(floor);
-        populateRooms();
-    } else {
-        document.getElementById("status").textContent =
-            "❌ Invalid or missing floor QR";
-    }
-});
-// Populate rooms dropdown
+// Populate room select dropdown
 const select = document.getElementById("roomSelect");
-
 function populateRooms() {
     for (const floor in rooms) {
         const group = document.createElement("optgroup");
@@ -193,60 +134,81 @@ function populateRooms() {
     }
 }
 
-
-function startNavigation() {
-  const room = select.value;
-  if (!room) return alert("Select a destination");
-
-  state.destination = room;
-  document.getElementById("status").textContent = `Navigating to Room ${room}`;
-  document.getElementById("navArrow").setAttribute("visible", true);
+// Show floor text
+function showStartText(floor) {
+    const text = document.getElementById("floorText");
+    text.setAttribute('value', `📍 You are on Floor ${floor}\nStart here`);
+    text.setAttribute('visible', true);
 }
 
-window.addEventListener('resize', () => {
-  const scene = document.querySelector('a-scene');
-  scene.style.width = window.innerWidth + 'px';
-  scene.style.height = window.innerHeight + 'px';
+// Start navigation and spawn arrows
+function startNavigation() {
+  const roomKey = select.value;
+  if (!roomKey) return alert("Select a destination");
+
+  state.destination = roomKey;
+  document.getElementById("status").textContent = `Navigating to Room ${roomKey.split('-')[1]}`;
+
+  // Remove old arrows
+  document.querySelectorAll('.nav-arrow').forEach(a => a.remove());
+
+  // Get arrow positions for this room
+  const path = arrowPaths[roomKey];
+  if (!path) return;
+
+  path.forEach(pos => {
+    const arrow = document.createElement('a-cone');
+    arrow.setAttribute('class', 'nav-arrow'); // for cleanup
+    arrow.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+    arrow.setAttribute('rotation', '0 0 0');
+    arrow.setAttribute('radius-bottom', '0.2');
+    arrow.setAttribute('height', '0.5');
+    arrow.setAttribute('color', '#ffff00');
+    document.querySelector('a-scene').appendChild(arrow);
+  });
+}
+
+// Initialize
+window.addEventListener("load", () => {
+  // Adjust camera FOV
+  const camera = document.querySelector('#camera');
+  if (window.innerWidth < 768) {
+    camera.setAttribute('camera', 'fov', 90);
+  } else {
+    camera.setAttribute('camera', 'fov', 75);
+  }
+
+  populateRooms();
+
+  // Set floor from URL param
+  const params = new URLSearchParams(window.location.search);
+  const floor = params.get("floor");
+  if (floor && rooms[floor]) {
+      state.currentFloor = floor;
+      showStartText(floor);
+  } else {
+      document.getElementById("status").textContent = "❌ Invalid or missing floor QR";
+  }
 });
 
+// Marker visibility
 const marker = document.querySelector('#floorMarker');
-
 marker.addEventListener('markerFound', () => {
     console.log('QR visible');
     document.getElementById('floorText').setAttribute('visible', true);
 });
-
 marker.addEventListener('markerLost', () => {
     console.log('QR lost');
     document.getElementById('floorText').setAttribute('visible', false);
 });
 
-
-function leaveArrowAtCurrentPosition() {
-  const markerEl = document.querySelector('#floorMarker');
-  const worldPos = new THREE.Vector3();
-  markerEl.object3D.getWorldPosition(worldPos);
-
-  const arrow = document.createElement('a-cone');
-  arrow.setAttribute('position', `${worldPos.x} ${worldPos.y} ${worldPos.z}`);
-  arrow.setAttribute('rotation', '0 0 0');
-  arrow.setAttribute('radius-bottom', '0.2');
-  arrow.setAttribute('height', '0.5');
-  arrow.setAttribute('color', '#ffff00');
-
-  document.querySelector('a-scene').appendChild(arrow);
-}
-
-
-function showStartText(floor) {
-    const text = document.getElementById("floorText"); // <-- fixed
-    text.setAttribute('value', `📍 You are on Floor ${floor}\nStart here`);
-    text.setAttribute('visible', true);
-}
-
-
+// Responsive
+window.addEventListener('resize', () => {
+  const scene = document.querySelector('a-scene');
+  scene.style.width = window.innerWidth + 'px';
+  scene.style.height = window.innerHeight + 'px';
+});
 </script>
-
 
 </body>
 </html>
