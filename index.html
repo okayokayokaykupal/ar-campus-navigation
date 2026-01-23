@@ -10,16 +10,7 @@
 <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
 <style>
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    overflow: hidden;
-    align-items: center;
-    display: flex;
-    justify-content: center;
-}
-
-body, html {
+html, body {
   margin: 0;
   padding: 0;
   width: 100%;
@@ -27,41 +18,40 @@ body, html {
   overflow: hidden;
 }
 
-.container {
-  width: 80vw;   /* width you want */
-  height: 90vh;  /* height you want */
-  position: relative;
-  border: 1px solid black;
-}
-
-a-scene {
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-}
-
-
 /* UI PANEL */
 #ui {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0,0,0,0.85);
-    padding: 15px;
-    border-radius: 12px;
-    color: white;
-    width: 90%;
-    max-width: 400px;
-    z-index: 10;
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.85);
+  padding: 15px;
+  border-radius: 12px;
+  color: white;
+  width: 90%;
+  max-width: 400px;
+  z-index: 10;
 }
 
-select, button { width: 100%; padding: 10px; margin-top: 8px; border-radius: 8px; border: none; font-size: 16px; }
-button { background: #00ff88; font-weight: bold; cursor: pointer; }
+select, button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  border-radius: 8px;
+  border: none;
+  font-size: 16px;
+}
+button {
+  background: #00ff88;
+  font-weight: bold;
+  cursor: pointer;
+}
 
-#status { text-align: center; margin-bottom: 8px; font-size: 14px; }
+#status {
+  text-align: center;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
 
 /* Mobile text scaling */
 @media (max-width: 768px) {
@@ -74,32 +64,34 @@ button { background: #00ff88; font-weight: bold; cursor: pointer; }
   a-text { transform: scale(1.5 1.5 1.5); }
   a-cone { transform: scale(1 1 1); }
 }
+
 </style>
 </head>
 <body>
 
 <!-- AR SCENE -->
-<div class="container">
-  <a-scene
-    embedded
-    arjs="trackingMethod: best; sourceType: webcam; facingMode: environment;"
-    renderer="alpha: true; physicallyCorrectLights: true"
-    vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: true"
-  >
-    <a-entity id="camera" camera look-controls near="0.1" far="100"></a-entity>
-    <a-marker type="barcode" value="1" id="floorMarker">
-      <a-text id="floorText"
-              value="You're on Floor 1\nSelect your destination"
-              position="0 0 0"
-              color="#00ff88"
-              scale="1 1 1">
-      </a-text>
-    </a-marker>
-  </a-scene>
-</div>
+<a-scene
+  embedded
+  arjs="trackingMethod: best; sourceType: webcam; facingMode: environment;"
+  renderer="alpha: true; physicallyCorrectLights: true"
+  vr-mode-ui="enabled: false"
+  device-orientation-permission-ui="enabled: true"
+>
 
+  <!-- Camera -->
+  <a-entity id="camera" camera look-controls near="0.1" far="1000"></a-entity>
 
+  <!-- Floor Marker -->
+  <a-marker type="barcode" value="1" id="floorMarker">
+    <a-text id="floorText"
+            value="You're on Floor 1\nSelect your destination"
+            position="0 0 0"
+            color="#00ff88"
+            scale="1 1 1">
+    </a-text>
+  </a-marker>
+
+</a-scene>
 
 <!-- UI -->
 <div id="ui">
@@ -111,19 +103,17 @@ button { background: #00ff88; font-weight: bold; cursor: pointer; }
 <script>
 // ------------------- DATA -------------------
 const rooms = {
-    1: ["101","102","103","104","105"],
-    2: ["201","202","203","204","205"],
-    3: ["301","302","303","304","305"],
-    4: ["401","402","403","404","405"],
-    5: ["501","502","503","504","505"]
+  1: ["101","102","103","104","105"],
+  2: ["201","202","203","204","205"],
+  3: ["301","302","303","304","305"],
+  4: ["401","402","403","404","405"],
+  5: ["501","502","503","504","505"]
 };
 
 const arrowPositions = {
-    // Example positions for arrows per floor/room [x,y,z]
-    "1-101": [{x:0, y:0, z:-2}, {x:0, y:0, z:-4}],
-    "1-102": [{x:1, y:0, z:-2}, {x:1, y:0, z:-4}],
-    "5-501": [{x:0, y:0, z:-1}, {x:0.5, y:0, z:-2.5}, {x:1, y:0, z:-4}],
-    // add more as needed
+  "1-101": [{x:0, y:0, z:-2}, {x:0, y:0, z:-4}],
+  "1-102": [{x:1, y:0, z:-2}, {x:1, y:0, z:-4}],
+  "5-501": [{x:0, y:0, z:-1}, {x:0.5, y:0, z:-2.5}, {x:1, y:0, z:-4}],
 };
 
 const state = { currentFloor: null, destination: null };
@@ -131,8 +121,9 @@ const state = { currentFloor: null, destination: null };
 // ------------------- INIT -------------------
 window.addEventListener("load", () => {
   const cameraEl = document.querySelector('#camera');
-  if (window.innerWidth < 768) cameraEl.setAttribute('camera','fov',90);
-  else cameraEl.setAttribute('camera','fov',75);
+  cameraEl.setAttribute('camera', 'fov', window.innerWidth < 768 ? 90 : 75);
+
+  populateRooms();
 
   const params = new URLSearchParams(window.location.search);
   const floor = params.get("floor");
@@ -140,15 +131,14 @@ window.addEventListener("load", () => {
   if(floor && rooms[floor]) {
     state.currentFloor = floor;
     showStartText(floor);
-    populateRooms();
   } else {
     document.getElementById("status").textContent = "❌ Invalid or missing floor QR";
   }
 });
 
 // ------------------- POPULATE ROOMS -------------------
-const select = document.getElementById("roomSelect");
 function populateRooms() {
+  const select = document.getElementById("roomSelect");
   for(const floor in rooms) {
     const group = document.createElement("optgroup");
     group.label = `Floor ${floor}`;
@@ -164,6 +154,7 @@ function populateRooms() {
 
 // ------------------- START NAVIGATION -------------------
 function startNavigation() {
+  const select = document.getElementById("roomSelect");
   const room = select.value;
   if(!room) return alert("Select a destination");
   state.destination = room;
@@ -184,7 +175,7 @@ function createArrows(roomId) {
     arrow.setAttribute('radius-bottom','0.2');
     arrow.setAttribute('height','0.5');
     arrow.setAttribute('color','#ffff00');
-    arrow.setAttribute('opacity', 1); // for fade
+    arrow.setAttribute('opacity', 1); 
     scene.appendChild(arrow);
   });
 }
@@ -192,6 +183,8 @@ function createArrows(roomId) {
 // ------------------- ARROW FADE -------------------
 function updateArrowFade() {
   const cameraEl = document.querySelector('#camera');
+  if(!cameraEl.object3D) return;
+
   const cameraPos = new THREE.Vector3();
   cameraEl.object3D.getWorldPosition(cameraPos);
 
@@ -203,10 +196,12 @@ function updateArrowFade() {
     const distance = cameraPos.distanceTo(arrowPos);
 
     if(distance < 1.0) {
-      let material = arrow.getObject3D('mesh').material;
-      material.transparent = true;
-      material.opacity = Math.max(0, material.opacity - 0.02);
-      if(material.opacity <= 0) arrow.parentNode.removeChild(arrow);
+      const mesh = arrow.getObject3D('mesh');
+      if(mesh && mesh.material) {
+        mesh.material.transparent = true;
+        mesh.material.opacity = Math.max(0, mesh.material.opacity - 0.02);
+        if(mesh.material.opacity <= 0) arrow.remove();
+      }
     }
   });
 
@@ -216,8 +211,8 @@ updateArrowFade();
 
 // ------------------- MARKER EVENTS -------------------
 const marker = document.querySelector('#floorMarker');
-marker.addEventListener('markerFound',()=>document.getElementById('floorText').setAttribute('visible',true));
-marker.addEventListener('markerLost',()=>document.getElementById('floorText').setAttribute('visible',false));
+marker.addEventListener('markerFound', ()=>document.getElementById('floorText').setAttribute('visible',true));
+marker.addEventListener('markerLost', ()=>document.getElementById('floorText').setAttribute('visible',false));
 
 // ------------------- SHOW START TEXT -------------------
 function showStartText(floor) {
@@ -226,5 +221,6 @@ function showStartText(floor) {
   text.setAttribute('visible', true);
 }
 </script>
+
 </body>
 </html>
