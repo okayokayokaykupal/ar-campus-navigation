@@ -61,17 +61,17 @@ button {
 <a-scene
   embedded
   arjs="trackingMethod: best; sourceType: webcam;"
-  renderer="alpha: true"
+  renderer="alpha: true; physicallyCorrectLights: true"
   vr-mode-ui="enabled: false"
   device-orientation-permission-ui="enabled: true">
 
   <a-entity
   camera
   look-controls
-  position="0 0 0"
-  fov="60"
+  fov="75"
   near="0.1"
-  far="100">
+  far="1000"
+  position="0 0 0">
   </a-entity>
 
 
