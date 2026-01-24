@@ -14,10 +14,22 @@
 html, body {
   margin: 0;
   padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
   font-family: Arial, sans-serif;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  position: fixed;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+#arCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 #ui {
@@ -249,8 +261,7 @@ function loadRoute(key) {
     // Create marker controls
     const markerControl = new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
       type: 'pattern',
-      patternUrl: step.patt,
-      changeMatrixMode: 'modelViewMatrix'
+      patternUrl: step.patt
     });
     
     // Create 3D arrow or cube indicator
@@ -258,12 +269,12 @@ function loadRoute(key) {
     const material = new THREE.MeshBasicMaterial({ 
       color: index === 0 ? 0x00ff00 : 0xffff00,
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.9,
       side: THREE.DoubleSide
     });
     const cone = new THREE.Mesh(geometry, material);
-    cone.position.set(0, 0.3, 0);
-    cone.rotation.x = Math.PI; // Point down
+    cone.position.set(0, 0, 0); // Place directly on the marker
+    cone.rotation.x = -Math.PI / 2; // Lay flat on the marker
     markerRoot.add(cone);
     
     // Add pulsing animation
@@ -285,7 +296,6 @@ function loadRoute(key) {
         // Last marker - destination reached
         setTimeout(function() {
           document.getElementById("status").textContent = "🎉 Destination reached!";
-          showInstruction("🎉 You have arrived!");
         }, 1500);
       }
     });
@@ -324,4 +334,3 @@ function clearMarkers() {
 
 </body>
 </html>
-
