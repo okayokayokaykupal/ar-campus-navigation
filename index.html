@@ -250,7 +250,7 @@ function loadRoute(key) {
     const markerControl = new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
       type: 'pattern',
       patternUrl: step.patt,
-      changeMatrixMode: 'cameraTransformMatrix'
+      changeMatrixMode: 'modelViewMatrix'
     });
     
     // Create 3D arrow or cube indicator
@@ -258,10 +258,11 @@ function loadRoute(key) {
     const material = new THREE.MeshBasicMaterial({ 
       color: index === 0 ? 0x00ff00 : 0xffff00,
       transparent: true,
-      opacity: 0.8
+      opacity: 0.8,
+      side: THREE.DoubleSide
     });
     const cone = new THREE.Mesh(geometry, material);
-    cone.position.y = geometry.parameters.height / 2;
+    cone.position.set(0, 0.3, 0);
     cone.rotation.x = Math.PI; // Point down
     markerRoot.add(cone);
     
